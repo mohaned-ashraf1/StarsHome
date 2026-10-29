@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/customer_receipt_helper.dart';
 import '../../core/utils/date_helper.dart';
@@ -91,6 +92,10 @@ class CustomersScreen extends StatelessWidget {
                   recordAsIncome: recordAsIncome,
                   accountsProvider: accountsProvider,
                 );
+
+                if (phone != null && phone.isNotEmpty) {
+                  _showWhatsAppSharePrompt(context, order, initialPayment);
+                }
               },
             ),
           );
@@ -433,6 +438,22 @@ class CustomersScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
+                    if (order.phone != null && order.phone!.trim().isNotEmpty) ...[
+                      IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 18),
+                        tooltip: 'مراسلة العميل ومشاركة الفاتورة عبر واتساب',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          WhatsAppService.sendOrderViaWhatsApp(
+                            context: context,
+                            order: order,
+                            payments: payments,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                    ],
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, color: AppColors.infoBlue, size: 18),
                       tooltip: 'تعديل الطلب والعميل',
@@ -759,6 +780,69 @@ class CustomersScreen extends StatelessWidget {
               }
             },
             child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWhatsAppSharePrompt(
+    BuildContext context,
+    CustomerOrderModel order,
+    double? initialPayment,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.surfaceBorder),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366)),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'إرسال تأكيد الطلب للعميل',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textWhite),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'تم تسجيل طلب الأستاذ/ة "${order.customerName}" بنجاح! 🎉\n\nهل ترغب في إرسال تفاصيل الطلبية والفاتورة PDF مباشرة عبر واتساب؟',
+          style: const TextStyle(fontSize: 13, color: AppColors.textWhite, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('لاحقاً', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('إرسال عبر واتساب 📲', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              WhatsAppService.sendOrderViaWhatsApp(
+                context: context,
+                order: order,
+                initialPayment: initialPayment,
+              );
+            },
           ),
         ],
       ),

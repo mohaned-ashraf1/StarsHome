@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/whatsapp_service.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/customer_receipt_helper.dart';
 import '../../core/utils/date_helper.dart';
@@ -68,6 +69,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ],
         ),
         actions: [
+          // WhatsApp Share
+          if (order.phone != null && order.phone!.trim().isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366)),
+              tooltip: 'إرسال الفاتورة وتأكيد الطلب عبر واتساب',
+              onPressed: () => WhatsAppService.sendOrderViaWhatsApp(
+                context: context,
+                order: order,
+                payments: payments,
+              ),
+            ),
           // Edit Order
           IconButton(
             icon: const Icon(Icons.edit_outlined, color: AppColors.accentGold),
@@ -212,6 +224,31 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+
+            // WhatsApp Action
+            ElevatedButton.icon(
+              icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
+              label: const Text(
+                'إرسال تفاصيل الطلب والفاتورة PDF عبر واتساب 📲',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 2,
+              ),
+              onPressed: () => WhatsAppService.sendOrderViaWhatsApp(
+                context: context,
+                order: order,
+                payments: payments,
+              ),
             ),
             const SizedBox(height: 12),
 

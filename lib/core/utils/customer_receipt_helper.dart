@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -11,6 +12,25 @@ import 'date_helper.dart';
 class CustomerReceiptHelper {
   static Future<void> printReceipt({
     required BuildContext context,
+    required CustomerOrderModel order,
+    required List<OrderPaymentModel> payments,
+  }) async {
+    final doc = await generateReceiptDocument(order: order, payments: payments);
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => doc.save(),
+      name: 'ايصال_طلب_${order.customerName}_${DateHelper.formatYMD(DateTime.now())}.pdf',
+    );
+  }
+
+  static Future<Uint8List> generateReceiptPdfBytes({
+    required CustomerOrderModel order,
+    required List<OrderPaymentModel> payments,
+  }) async {
+    final doc = await generateReceiptDocument(order: order, payments: payments);
+    return doc.save();
+  }
+
+  static Future<pw.Document> generateReceiptDocument({
     required CustomerOrderModel order,
     required List<OrderPaymentModel> payments,
   }) async {
@@ -487,10 +507,7 @@ class CustomerReceiptHelper {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-      name: 'ايصال_طلب_${order.customerName}_${DateHelper.formatYMD(DateTime.now())}.pdf',
-    );
+    return doc;
   }
 
   static pw.Widget _buildInfoItem(

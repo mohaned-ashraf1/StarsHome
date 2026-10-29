@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../models/user_profile.dart';
+import 'db_service.dart';
 import 'supabase_auth_service.dart';
 
 /// Authentication service providing PIN-based auth with:
@@ -237,6 +239,47 @@ class AuthService {
   }
 
   // ──────────────────────────────────────────────────
+  // Dual Persistence: SharedPreferences + SQLite app_settings
+  // ──────────────────────────────────────────────────
+
+  Future<String?> _getSetting(String key, SharedPreferences prefs) async {
+    final val = prefs.getString(key);
+    if (val != null && val.isNotEmpty) return val;
+    try {
+      final db = await DBService.instance.database;
+      final res = await db.query('app_settings', where: 'key = ?', whereArgs: [key], limit: 1);
+      if (res.isNotEmpty) {
+        final dbVal = res.first['value'] as String?;
+        if (dbVal != null && dbVal.isNotEmpty) {
+          await prefs.setString(key, dbVal);
+          return dbVal;
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthService] SQLite read setting error: $e');
+    }
+    return null;
+  }
+
+  Future<void> _saveSetting(String key, String value, SharedPreferences prefs) async {
+    try {
+      await prefs.setString(key, value);
+    } catch (e) {
+      debugPrint('[AuthService] SharedPreferences save error: $e');
+    }
+    try {
+      final db = await DBService.instance.database;
+      await db.insert(
+        'app_settings',
+        {'key': key, 'value': value},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      debugPrint('[AuthService] SQLite save setting error: $e');
+    }
+  }
+
+  // ──────────────────────────────────────────────────
   // Login
   // ──────────────────────────────────────────────────
 
@@ -267,7 +310,7 @@ class AuthService {
 
       final hashKey = '${role}_pin_hash';
       final pinNotSetKey = '${role}_pin_not_set';
-      final storedHash = prefs.getString(hashKey);
+      final storedHash = await _getSetting(hashKey, prefs);
       final pinNotSet = prefs.getBool(pinNotSetKey) ?? false;
 
       if (pinNotSet || storedHash == null) {
@@ -300,7 +343,7 @@ class AuthService {
 
       // Build user profile from stored identity (no hardcoded names here)
       final userId = role == 'owner' ? _ownerUserId : _managerUserId;
-      final storedName = prefs.getString('${role}_display_name') ??
+      final storedName = await _getSetting('${role}_display_name', prefs) ??
           (role == 'owner' ? 'مالك المصنع' : 'مدير المصنع');
 
       _currentUser = UserProfile(id: userId, fullName: storedName, role: role);
@@ -356,7 +399,7 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final hashKey = '${role}_pin_hash';
-      final storedHash = prefs.getString(hashKey);
+      final storedHash = await _getSetting(hashKey, prefs);
       final pinNotSet = prefs.getBool('${role}_pin_not_set') ?? false;
 
       // If a PIN already exists, verify current PIN first
@@ -368,11 +411,11 @@ class AuthService {
 
       // Hash and store new PIN
       final newHash = hashPin(newPin);
-      await prefs.setString(hashKey, newHash);
+      await _saveSetting(hashKey, newHash, prefs);
       await prefs.remove('${role}_pin_not_set');
 
       if (displayName != null && displayName.isNotEmpty) {
-        await prefs.setString('${role}_display_name', displayName.trim());
+        await _saveSetting('${role}_display_name', displayName.trim(), prefs);
       }
 
       debugPrint('[AuthService] PIN changed for role=$role');
@@ -397,8 +440,8 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final hash = hashPin(newPin);
-      await prefs.setString('${role}_pin_hash', hash);
-      await prefs.setString('${role}_display_name', displayName.trim());
+      await _saveSetting('${role}_pin_hash', hash, prefs);
+      await _saveSetting('${role}_display_name', displayName.trim(), prefs);
       await prefs.setBool('${role}_pin_not_set', false);
       await prefs.remove('${role}_pin_not_set');
       await _clearFailedAttempts(role, prefs);
@@ -415,7 +458,8 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final pinNotSet = prefs.getBool('${role}_pin_not_set') ?? false;
-      final hasHash = prefs.getString('${role}_pin_hash') != null;
+      final storedHash = await _getSetting('${role}_pin_hash', prefs);
+      final hasHash = storedHash != null && storedHash.isNotEmpty;
       return hasHash && !pinNotSet;
     } catch (_) {
       return false;

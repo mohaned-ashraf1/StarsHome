@@ -29,7 +29,7 @@ class SyncService {
   static const int _maxRetries = 5;
 
   /// Default Supabase production credentials for Stars Homes Factory
-  static const String defaultSupabaseUrl = 'https://rxhepjrwowtkhonebcsp.supabase.co';
+  static const String defaultSupabaseUrl = 'https://rxbepjrwowtkhonebcsp.supabase.co';
   static const String defaultSupabaseAnonKey = 'sb_publishable_FmSiopJi6Y15IDjqLIutKg_Jjl3wIXb';
 
   SupabaseClient? _supabaseClient;
