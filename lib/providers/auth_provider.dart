@@ -53,6 +53,9 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Initialize default PIN state flags if needed
+      await AuthService.instance.initDefaultPinsIfNeeded();
+
       // Check PIN configuration status
       _ownerPinConfigured = await AuthService.instance.isPinConfigured('owner');
       _managerPinConfigured = await AuthService.instance.isPinConfigured('manager');
@@ -155,14 +158,15 @@ class AuthProvider with ChangeNotifier {
       );
       _ownerPinConfigured = await AuthService.instance.isPinConfigured('owner');
       _managerPinConfigured = await AuthService.instance.isPinConfigured('manager');
+      _errorMessage = null;
       notifyListeners();
       return true;
     } on AuthException catch (e) {
       _errorMessage = e.message;
       notifyListeners();
       return false;
-    } catch (_) {
-      _errorMessage = 'حدث خطأ أثناء إعداد رمز الدخول';
+    } catch (e) {
+      _errorMessage = 'حدث خطأ أثناء إعداد رمز الدخول: $e';
       notifyListeners();
       return false;
     }

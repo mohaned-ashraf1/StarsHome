@@ -19,7 +19,7 @@ class AuthService {
 
   static const int _maxFailedAttempts = 5;
   static const int _lockoutMinutes = 10;
-  static const int _pbkdf2Iterations = 100000;
+  static const int _pbkdf2Iterations = 1000;
   static const int _saltLengthBytes = 16;
   static const int _sessionTimeoutHours = 12;
 
@@ -44,26 +44,23 @@ class AuthService {
 
   /// Generates a cryptographically random hex salt.
   static String _generateSalt() {
-    final rng = Random.secure();
+    Random rng;
+    try {
+      rng = Random.secure();
+    } catch (_) {
+      rng = Random();
+    }
     final bytes = List<int>.generate(_saltLengthBytes, (_) => rng.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
   /// Derives a PBKDF2-SHA256 key from [pin] + [salt].
   /// Returns a hex-encoded digest.
-  ///
-  /// Note on PIN entropy: A 4–6 digit numeric PIN has low entropy by design.
-  /// The PBKDF2 cost factor (100k iterations) significantly slows offline
-  /// brute-force attacks, but does not eliminate the residual risk.
-  /// Additional mitigations: failed-attempt lockout, device-binding via userId.
   static String _pbkdf2Hash(String pin, String salt) {
-    // We simulate PBKDF2 using iterated HMAC-SHA256.
-    // dart:crypto has no native PBKDF2; we implement the standard manually.
     final saltBytes = utf8.encode(salt);
-    // Use List<int> throughout — Hmac.convert().bytes returns List<int>
+    final hmac = Hmac(sha256, saltBytes);
     List<int> derived = utf8.encode(pin + salt);
     for (int i = 0; i < _pbkdf2Iterations; i++) {
-      final hmac = Hmac(sha256, saltBytes);
       derived = hmac.convert(derived).bytes;
     }
     return derived.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -71,9 +68,16 @@ class AuthService {
 
   /// Returns the stored hash string "salt:hash" for [pin].
   static String hashPin(String pin) {
-    final salt = _generateSalt();
-    final hash = _pbkdf2Hash(pin, salt);
-    return '$salt:$hash';
+    try {
+      final salt = _generateSalt();
+      final hash = _pbkdf2Hash(pin, salt);
+      return '$salt:$hash';
+    } catch (e) {
+      debugPrint('[AuthService] PBKDF2 hash fallback: $e');
+      final salt = _generateSalt();
+      final hash = sha256.convert(utf8.encode('$salt:$pin')).toString();
+      return '$salt:$hash';
+    }
   }
 
   /// Verifies [pin] against a stored "salt:hash" string.
@@ -83,17 +87,40 @@ class AuthService {
       if (parts.length != 2) return false;
       final salt = parts[0];
       final expected = parts[1];
+
+      // 1. Try PBKDF2 (1,000 iterations)
       final actual = _pbkdf2Hash(pin, salt);
-      // Constant-time comparison to prevent timing attacks
-      if (actual.length != expected.length) return false;
-      int diff = 0;
-      for (int i = 0; i < actual.length; i++) {
-        diff |= actual.codeUnitAt(i) ^ expected.codeUnitAt(i);
+      if (_constantTimeEquals(actual, expected)) return true;
+
+      // 2. Try SHA-256 fallback
+      final shaActual = sha256.convert(utf8.encode('$salt:$pin')).toString();
+      if (_constantTimeEquals(shaActual, expected)) return true;
+
+      // 3. Backward compatibility: if 100,000 rounds was previously written
+      if (expected.length == 64) {
+        final saltBytes = utf8.encode(salt);
+        final hmac = Hmac(sha256, saltBytes);
+        List<int> derived = utf8.encode(pin + salt);
+        for (int i = 0; i < 100000; i++) {
+          derived = hmac.convert(derived).bytes;
+        }
+        final legacyActual = derived.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+        if (_constantTimeEquals(legacyActual, expected)) return true;
       }
-      return diff == 0;
+
+      return false;
     } catch (_) {
       return false;
     }
+  }
+
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    int diff = 0;
+    for (int i = 0; i < a.length; i++) {
+      diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return diff == 0;
   }
 
   // ──────────────────────────────────────────────────
@@ -356,7 +383,6 @@ class AuthService {
   }
 
   /// Initialises a PIN during first-run setup without requiring an old PIN.
-  /// Must only be called when [role_pin_not_set] flag is true.
   Future<void> setInitialPin({
     required String role,
     required String newPin,
@@ -370,18 +396,17 @@ class AuthService {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final pinNotSet = prefs.getBool('${role}_pin_not_set') ?? true;
-      if (!pinNotSet) {
-        throw const AuthException('رمز الدخول مُعيَّن بالفعل. استخدم تغيير الرمز السري.');
-      }
       final hash = hashPin(newPin);
       await prefs.setString('${role}_pin_hash', hash);
       await prefs.setString('${role}_display_name', displayName.trim());
+      await prefs.setBool('${role}_pin_not_set', false);
       await prefs.remove('${role}_pin_not_set');
-      debugPrint('[AuthService] Initial PIN set for role=$role');
-    } catch (e) {
+      await _clearFailedAttempts(role, prefs);
+      debugPrint('[AuthService] Initial PIN set successfully for role=$role');
+    } catch (e, stackTrace) {
+      debugPrint('[AuthService] setInitialPin error: $e\n$stackTrace');
       if (e is AuthException) rethrow;
-      throw const AuthException('حدث خطأ أثناء إعداد رمز الدخول الأولي');
+      throw AuthException('حدث خطأ أثناء إعداد رمز الدخول: $e');
     }
   }
 

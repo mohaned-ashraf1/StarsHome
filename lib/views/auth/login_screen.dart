@@ -113,6 +113,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
+      // Automatically log in with the newly configured PIN
+      final loginSuccess = await auth.login(_selectedRole, pin);
+      if (!mounted) return;
+
+      if (loginSuccess) {
+        _pinController.clear();
+        _confirmPinController.clear();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+        return;
+      }
+
       _pinController.clear();
       _confirmPinController.clear();
       setState(() {
@@ -364,6 +378,7 @@ class _LoginScreenState extends State<LoginScreen> {
             _selectedRole = roleKey;
             _errorMessage = null;
             _pinController.clear();
+            _confirmPinController.clear();
           });
           // Re-check setup mode for selected role
           final auth = Provider.of<AuthProvider>(context, listen: false);
