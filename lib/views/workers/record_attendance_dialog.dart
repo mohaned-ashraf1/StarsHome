@@ -29,7 +29,7 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
 
   // Time stored as TimeOfDay internally, displayed in 12h, saved to DB as 24h
   TimeOfDay _arrivalTime = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _departureTime = const TimeOfDay(hour: 19, minute: 0);
+  TimeOfDay _departureTime = const TimeOfDay(hour: 18, minute: 0);
   final TextEditingController _notesController = TextEditingController();
 
   double _previewOvertimeHours = 0.0;
@@ -68,7 +68,9 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
     final workers = Provider.of<WorkersProvider>(context, listen: false);
     _selectedDate = workers.selectedAttendanceDate;
     if (workers.activeWorkers.isNotEmpty) {
-      _selectedWorkerId = workers.activeWorkers.first.id;
+      final first = workers.activeWorkers.first;
+      _selectedWorkerId = first.id;
+      _applyWorkerStandardTimes(first);
       _updateOvertimePreview();
     }
     // No listener needed - _pickTime calls _updateOvertimePreview directly
@@ -78,6 +80,21 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
   void dispose() {
     _notesController.dispose();
     super.dispose();
+  }
+
+  void _applyWorkerStandardTimes(WorkerModel worker) {
+    try {
+      final startParts = worker.standardStartTime.split(':');
+      if (startParts.length >= 2) {
+        _arrivalTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+      }
+    } catch (_) {}
+    try {
+      final endParts = worker.standardEndTime.split(':');
+      if (endParts.length >= 2) {
+        _departureTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+      }
+    } catch (_) {}
   }
 
   void _updateOvertimePreview() {
@@ -174,7 +191,14 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) {
-                          setState(() => _selectedWorkerId = val);
+                          setState(() {
+                            _selectedWorkerId = val;
+                            final w = workers.workers.firstWhere(
+                              (item) => item.id == val,
+                              orElse: () => workers.activeWorkers.first,
+                            );
+                            _applyWorkerStandardTimes(w);
+                          });
                           _updateOvertimePreview();
                         }
                       },

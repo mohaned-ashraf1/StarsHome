@@ -70,6 +70,9 @@ class DBService {
             value TEXT
           )
         ''');
+        await db.execute(
+          "UPDATE workers SET standard_end_time = '18:00' WHERE standard_end_time = '19:00'",
+        );
       },
     );
 
@@ -174,7 +177,7 @@ class DBService {
         full_name TEXT NOT NULL,
         daily_wage REAL NOT NULL DEFAULT 0,
         standard_start_time TEXT NOT NULL DEFAULT '08:00',
-        standard_end_time TEXT NOT NULL DEFAULT '19:00',
+        standard_end_time TEXT NOT NULL DEFAULT '18:00',
         overtime_hourly_rate REAL NOT NULL DEFAULT 0,
         phone TEXT,
         status TEXT NOT NULL DEFAULT 'active',

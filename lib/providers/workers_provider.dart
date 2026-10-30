@@ -165,7 +165,7 @@ class WorkersProvider with ChangeNotifier {
     required String fullName,
     required double dailyWage,
     String standardStartTime = '08:00',
-    String standardEndTime = '19:00',
+    String standardEndTime = '18:00',
     required double overtimeHourlyRate,
     String? phone,
     String? notes,

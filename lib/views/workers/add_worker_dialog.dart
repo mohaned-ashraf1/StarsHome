@@ -23,7 +23,7 @@ class _AddWorkerDialogState extends State<AddWorkerDialog> {
 
   // Time stored internally as 24h for calculations, displayed as 12h
   TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _endTime = const TimeOfDay(hour: 19, minute: 0);
+  TimeOfDay _endTime = const TimeOfDay(hour: 18, minute: 0);
 
   @override
   void initState() {
