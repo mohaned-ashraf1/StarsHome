@@ -132,29 +132,60 @@ class AuthService {
   String _lockoutKey(String role) => 'lockout_${role}_until';
   String _attemptsKey(String role) => 'failed_attempts_$role';
 
-  Future<bool> _isLockedOut(String role, SharedPreferences prefs) async {
-    final lockoutUntilStr = prefs.getString(_lockoutKey(role));
-    if (lockoutUntilStr == null) return false;
-    final lockoutUntil = DateTime.tryParse(lockoutUntilStr);
-    if (lockoutUntil == null) return false;
-    return DateTime.now().isBefore(lockoutUntil);
+  Future<SharedPreferences?> _getPrefs() async {
+    try {
+      return await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('[AuthService] SharedPreferences.getInstance error: $e');
+      return null;
+    }
   }
 
-  Future<void> _recordFailedAttempt(String role, SharedPreferences prefs) async {
+  Future<bool> _isLockedOut(String role, SharedPreferences? prefs) async {
+    try {
+      final lockoutUntilStr = prefs?.getString(_lockoutKey(role)) ??
+          await _getSetting(_lockoutKey(role), prefs);
+      if (lockoutUntilStr == null) return false;
+      final lockoutUntil = DateTime.tryParse(lockoutUntilStr);
+      if (lockoutUntil == null) return false;
+      return DateTime.now().isBefore(lockoutUntil);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _recordFailedAttempt(String role, SharedPreferences? prefs) async {
     final key = _attemptsKey(role);
-    final current = prefs.getInt(key) ?? 0;
+    int current = 0;
+    try {
+      current = prefs?.getInt(key) ?? 0;
+    } catch (_) {
+      final str = await _getSetting(key, prefs);
+      current = int.tryParse(str ?? '0') ?? 0;
+    }
     final newCount = current + 1;
-    await prefs.setInt(key, newCount);
+    try {
+      await prefs?.setInt(key, newCount);
+    } catch (_) {}
+    await _saveSetting(key, newCount.toString(), prefs);
+
     if (newCount >= _maxFailedAttempts) {
       final lockUntil = DateTime.now().add(Duration(minutes: _lockoutMinutes));
-      await prefs.setString(_lockoutKey(role), lockUntil.toIso8601String());
+      try {
+        await prefs?.setString(_lockoutKey(role), lockUntil.toIso8601String());
+      } catch (_) {}
+      await _saveSetting(_lockoutKey(role), lockUntil.toIso8601String(), prefs);
       debugPrint('[AuthService] Role "$role" locked out until $lockUntil');
     }
   }
 
-  Future<void> _clearFailedAttempts(String role, SharedPreferences prefs) async {
-    await prefs.remove(_attemptsKey(role));
-    await prefs.remove(_lockoutKey(role));
+  Future<void> _clearFailedAttempts(String role, SharedPreferences? prefs) async {
+    try {
+      await prefs?.remove(_attemptsKey(role));
+      await prefs?.remove(_lockoutKey(role));
+    } catch (_) {}
+    await _saveSetting(_attemptsKey(role), '0', prefs);
+    await _saveSetting(_lockoutKey(role), '', prefs);
   }
 
   // ──────────────────────────────────────────────────
@@ -162,22 +193,24 @@ class AuthService {
   // ──────────────────────────────────────────────────
 
   /// On first launch, persists hashed default PINs.
-  /// Caller must replace defaults with user-chosen PINs via [changePin].
   Future<void> initDefaultPinsIfNeeded() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final ownerHashExists = prefs.getString('owner_pin_hash') != null;
-      final managerHashExists = prefs.getString('manager_pin_hash') != null;
-      // Only set defaults if no hash is stored at all (truly first install)
-      if (!ownerHashExists) {
-        // Default is deliberately not hardcoded here in code — the first-time
-        // setup screen must prompt the user to set their PIN.
-        // We set a placeholder that forces setup on first login attempt.
-        await prefs.setBool('owner_pin_not_set', true);
+      final prefs = await _getPrefs();
+      final ownerHash = await _getSetting('owner_pin_hash', prefs);
+      final managerHash = await _getSetting('manager_pin_hash', prefs);
+
+      if (ownerHash == null || ownerHash.isEmpty) {
+        try {
+          await prefs?.setBool('owner_pin_not_set', true);
+        } catch (_) {}
+        await _saveSetting('owner_pin_not_set', 'true', prefs);
         debugPrint('[AuthService] Owner PIN not configured — setup required');
       }
-      if (!managerHashExists) {
-        await prefs.setBool('manager_pin_not_set', true);
+      if (managerHash == null || managerHash.isEmpty) {
+        try {
+          await prefs?.setBool('manager_pin_not_set', true);
+        } catch (_) {}
+        await _saveSetting('manager_pin_not_set', 'true', prefs);
         debugPrint('[AuthService] Manager PIN not configured — setup required');
       }
     } catch (e) {
@@ -193,11 +226,15 @@ class AuthService {
   /// exists or if the session has timed out.
   Future<UserProfile?> loadStoredSession() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('session_user_id');
-      final fullName = prefs.getString('session_user_name');
-      final role = prefs.getString('session_user_role');
-      final sessionStartStr = prefs.getString('session_start');
+      final prefs = await _getPrefs();
+      final userId = prefs?.getString('session_user_id') ??
+          await _getSetting('session_user_id', prefs);
+      final fullName = prefs?.getString('session_user_name') ??
+          await _getSetting('session_user_name', prefs);
+      final role = prefs?.getString('session_user_role') ??
+          await _getSetting('session_user_role', prefs);
+      final sessionStartStr = prefs?.getString('session_start') ??
+          await _getSetting('session_start', prefs);
 
       if (userId == null || fullName == null || role == null || sessionStartStr == null) {
         return null;
@@ -231,27 +268,38 @@ class AuthService {
     }
   }
 
-  Future<void> _clearSession(SharedPreferences prefs) async {
-    await prefs.remove('session_user_id');
-    await prefs.remove('session_user_name');
-    await prefs.remove('session_user_role');
-    await prefs.remove('session_start');
+  Future<void> _clearSession(SharedPreferences? prefs) async {
+    try {
+      await prefs?.remove('session_user_id');
+      await prefs?.remove('session_user_name');
+      await prefs?.remove('session_user_role');
+      await prefs?.remove('session_start');
+    } catch (_) {}
+    await _saveSetting('session_user_id', '', prefs);
+    await _saveSetting('session_user_name', '', prefs);
+    await _saveSetting('session_user_role', '', prefs);
+    await _saveSetting('session_start', '', prefs);
   }
 
   // ──────────────────────────────────────────────────
   // Dual Persistence: SharedPreferences + SQLite app_settings
   // ──────────────────────────────────────────────────
 
-  Future<String?> _getSetting(String key, SharedPreferences prefs) async {
-    final val = prefs.getString(key);
-    if (val != null && val.isNotEmpty) return val;
+  Future<String?> _getSetting(String key, SharedPreferences? prefs) async {
+    try {
+      final val = prefs?.getString(key);
+      if (val != null && val.isNotEmpty) return val;
+    } catch (_) {}
+
     try {
       final db = await DBService.instance.database;
       final res = await db.query('app_settings', where: 'key = ?', whereArgs: [key], limit: 1);
       if (res.isNotEmpty) {
         final dbVal = res.first['value'] as String?;
         if (dbVal != null && dbVal.isNotEmpty) {
-          await prefs.setString(key, dbVal);
+          try {
+            await prefs?.setString(key, dbVal);
+          } catch (_) {}
           return dbVal;
         }
       }
@@ -261,9 +309,9 @@ class AuthService {
     return null;
   }
 
-  Future<void> _saveSetting(String key, String value, SharedPreferences prefs) async {
+  Future<void> _saveSetting(String key, String value, SharedPreferences? prefs) async {
     try {
-      await prefs.setString(key, value);
+      await prefs?.setString(key, value);
     } catch (e) {
       debugPrint('[AuthService] SharedPreferences save error: $e');
     }
@@ -294,11 +342,12 @@ class AuthService {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await _getPrefs();
 
       // Check lockout
       if (await _isLockedOut(role, prefs)) {
-        final lockUntilStr = prefs.getString(_lockoutKey(role));
+        final lockUntilStr = prefs?.getString(_lockoutKey(role)) ??
+            await _getSetting(_lockoutKey(role), prefs);
         final lockUntil = DateTime.tryParse(lockUntilStr ?? '');
         final remaining = lockUntil != null
             ? lockUntil.difference(DateTime.now()).inMinutes + 1
@@ -309,14 +358,11 @@ class AuthService {
       }
 
       final hashKey = '${role}_pin_hash';
-      final pinNotSetKey = '${role}_pin_not_set';
       final storedHash = await _getSetting(hashKey, prefs);
-      final pinNotSet = prefs.getBool(pinNotSetKey) ?? false;
+      final pinNotSetStr = await _getSetting('${role}_pin_not_set', prefs);
+      final pinNotSet = pinNotSetStr == 'true';
 
-      if (pinNotSet || storedHash == null) {
-        // PIN has never been configured — allow setup mode with explicit first-run PIN
-        // The first-run PIN is supplied at deployment time, not hardcoded here.
-        // This path should only occur during initial device setup.
+      if (pinNotSet || storedHash == null || storedHash.isEmpty) {
         throw const AuthException(
           'لم يتم إعداد رمز الدخول بعد. يرجى التواصل مع مسؤول النظام لإعداد رمز الدخول الأولي.',
         );
@@ -326,8 +372,14 @@ class AuthService {
       final pinValid = verifyPin(pin, storedHash);
       if (!pinValid) {
         await _recordFailedAttempt(role, prefs);
-        final remainingAttempts =
-            _maxFailedAttempts - (prefs.getInt(_attemptsKey(role)) ?? 0);
+        int failedCount = 1;
+        try {
+          failedCount = prefs?.getInt(_attemptsKey(role)) ?? 1;
+        } catch (_) {
+          final s = await _getSetting(_attemptsKey(role), prefs);
+          failedCount = int.tryParse(s ?? '1') ?? 1;
+        }
+        final remainingAttempts = _maxFailedAttempts - failedCount;
         if (remainingAttempts <= 0) {
           throw AuthException(
             'تم تجاوز عدد المحاولات المسموح به. يرجى الانتظار $_lockoutMinutes دقيقة.',
@@ -350,13 +402,18 @@ class AuthService {
       _sessionStart = DateTime.now();
 
       // Persist session
-      await prefs.setString('session_user_id', _currentUser!.id);
-      await prefs.setString('session_user_name', _currentUser!.fullName);
-      await prefs.setString('session_user_role', _currentUser!.role);
-      await prefs.setString('session_start', _sessionStart!.toIso8601String());
+      try {
+        await prefs?.setString('session_user_id', _currentUser!.id);
+        await prefs?.setString('session_user_name', _currentUser!.fullName);
+        await prefs?.setString('session_user_role', _currentUser!.role);
+        await prefs?.setString('session_start', _sessionStart!.toIso8601String());
+      } catch (_) {}
+      await _saveSetting('session_user_id', _currentUser!.id, prefs);
+      await _saveSetting('session_user_name', _currentUser!.fullName, prefs);
+      await _saveSetting('session_user_role', _currentUser!.role, prefs);
+      await _saveSetting('session_start', _sessionStart!.toIso8601String(), prefs);
 
       // Sign in to Supabase Auth (non-blocking — failure is acceptable offline)
-      // Uses refresh_token from secure storage — no password stored or passed.
       SupabaseAuthService.instance.signInWithRole(role).then((supabaseUser) {
         if (supabaseUser != null) {
           debugPrint('[AuthService] Supabase session active for role=$role uid=${supabaseUser.id}');
@@ -397,13 +454,14 @@ class AuthService {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await _getPrefs();
       final hashKey = '${role}_pin_hash';
       final storedHash = await _getSetting(hashKey, prefs);
-      final pinNotSet = prefs.getBool('${role}_pin_not_set') ?? false;
+      final pinNotSetStr = await _getSetting('${role}_pin_not_set', prefs);
+      final pinNotSet = pinNotSetStr == 'true';
 
       // If a PIN already exists, verify current PIN first
-      if (!pinNotSet && storedHash != null) {
+      if (!pinNotSet && storedHash != null && storedHash.isNotEmpty) {
         if (currentPin == null || !verifyPin(currentPin, storedHash)) {
           throw const AuthException('رمز الدخول الحالي غير صحيح');
         }
@@ -412,7 +470,10 @@ class AuthService {
       // Hash and store new PIN
       final newHash = hashPin(newPin);
       await _saveSetting(hashKey, newHash, prefs);
-      await prefs.remove('${role}_pin_not_set');
+      try {
+        await prefs?.remove('${role}_pin_not_set');
+      } catch (_) {}
+      await _saveSetting('${role}_pin_not_set', 'false', prefs);
 
       if (displayName != null && displayName.isNotEmpty) {
         await _saveSetting('${role}_display_name', displayName.trim(), prefs);
@@ -438,13 +499,21 @@ class AuthService {
       throw const AuthException('يجب أن يكون رمز الدخول 4 أرقام على الأقل');
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await _getPrefs();
       final hash = hashPin(newPin);
       await _saveSetting('${role}_pin_hash', hash, prefs);
       await _saveSetting('${role}_display_name', displayName.trim(), prefs);
-      await prefs.setBool('${role}_pin_not_set', false);
-      await prefs.remove('${role}_pin_not_set');
-      await _clearFailedAttempts(role, prefs);
+      await _saveSetting('${role}_pin_not_set', 'false', prefs);
+
+      try {
+        await prefs?.setBool('${role}_pin_not_set', false);
+        await prefs?.remove('${role}_pin_not_set');
+      } catch (_) {}
+
+      try {
+        await _clearFailedAttempts(role, prefs);
+      } catch (_) {}
+
       debugPrint('[AuthService] Initial PIN set successfully for role=$role');
     } catch (e, stackTrace) {
       debugPrint('[AuthService] setInitialPin error: $e\n$stackTrace');
@@ -456,11 +525,13 @@ class AuthService {
   /// Returns true if the given role has a configured PIN.
   Future<bool> isPinConfigured(String role) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final pinNotSet = prefs.getBool('${role}_pin_not_set') ?? false;
+      final prefs = await _getPrefs();
+      final pinNotSetStr = await _getSetting('${role}_pin_not_set', prefs);
+      if (pinNotSetStr == 'true') return false;
+
       final storedHash = await _getSetting('${role}_pin_hash', prefs);
       final hasHash = storedHash != null && storedHash.isNotEmpty;
-      return hasHash && !pinNotSet;
+      return hasHash;
     } catch (_) {
       return false;
     }
@@ -472,7 +543,7 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await _getPrefs();
       await _clearSession(prefs);
     } catch (e) {
       debugPrint('[AuthService] Logout error: $e');

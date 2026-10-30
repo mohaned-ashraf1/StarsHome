@@ -272,6 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: '••••',
                       prefixIcon: const Icon(Icons.lock_outline, color: AppColors.accentGold),
                       errorText: _errorMessage,
+                      errorMaxLines: 4,
                     ),
                     onSubmitted: (_) => _isSetupMode ? _handleSetupPin() : _handleLogin(),
                   ),
