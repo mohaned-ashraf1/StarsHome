@@ -4,6 +4,9 @@
 -- Project: rxbepjrwowtkhonebcsp
 -- ============================================================
 
+-- 0. Drop foreign key constraint on profiles so it accepts factory users
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
+
 -- 1. Grant schema usage to anon and authenticated roles
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
