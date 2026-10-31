@@ -91,11 +91,18 @@ class CustomersProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Orders that have delivery date within 7 days from today (or overdue) and not yet delivered/cancelled
+  List<CustomerOrderModel> get ordersDueSoon {
+    return _orders.where((o) => o.isDueWithinOneWeek || o.isOverdue).toList();
+  }
+
   List<CustomerOrderModel> get filteredOrders {
     return _orders.where((order) {
       // Status filter
       if (_statusFilter != 'الكل') {
-        if (order.status != _statusFilter) {
+        if (_statusFilter == 'due_soon') {
+          if (!order.isDueWithinOneWeek && !order.isOverdue) return false;
+        } else if (order.status != _statusFilter) {
           return false;
         }
       }

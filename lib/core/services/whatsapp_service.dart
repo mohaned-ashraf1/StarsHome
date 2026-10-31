@@ -73,6 +73,46 @@ $notesSection━━━━━━━━━━━━━━━━━━
 📞 لأي استفسار يسعدنا تواصلك معنا دائماً.''';
   }
 
+  /// Builds a delivery reminder message to notify the customer about upcoming delivery
+  static String buildDeliveryReminderMessage({
+    required CustomerOrderModel order,
+    required int daysRemaining,
+    List<OrderPaymentModel> payments = const [],
+  }) {
+    final totalPaid = payments.isNotEmpty
+        ? order.calculateTotalPaid(payments)
+        : 0.0;
+    final remaining = (order.totalAmount - totalPaid).clamp(0.0, double.infinity);
+    final deliveryStr = order.deliveryDate != null
+        ? DateHelper.formatYMD(order.deliveryDate!)
+        : 'خلال الأيام القادمة';
+    final orderCode = order.id.length >= 6 ? order.id.substring(0, 6).toUpperCase() : order.id;
+
+    final countdownStr = daysRemaining < 0
+        ? 'تجاوز موعد التسليم المحدد ($deliveryStr) ونعمل على إنهاء التسليم فوراً'
+        : daysRemaining == 0
+            ? 'اليوم بإذن الله ($deliveryStr)'
+            : daysRemaining == 1
+                ? 'غداً بإذن الله ($deliveryStr)'
+                : 'خلال $daysRemaining أيام (الموافق $deliveryStr)';
+
+    return '''تذكير بموعد التسليم 🌟
+مرحباً أستاذ/ة ${order.customerName}، تحية طيبة من *مصنع ستارز هومز للأثاث والمصنوعات الخشبية* 🛋️✨
+
+نود تذكيركم باقتراب موعد تسليم طلبيتكم:
+━━━━━━━━━━━━━━━━━━
+📋 *كود الطلب:* #$orderCode
+🏷️ *تفاصيل الطلبية:* ${order.orderDescription}
+📅 *موعد التسليم المتوقع:* $countdownStr
+💰 *إجمالي الحساب:* ${CurrencyFormatter.format(order.totalAmount)}
+💵 *المسدد:* ${CurrencyFormatter.format(totalPaid)}
+⏳ *المتبقي عند الاستلام:* ${CurrencyFormatter.format(remaining)}
+━━━━━━━━━━━━━━━━━━
+نحن في المراحل النهائية لتجهيز طلبكم بأعلى درجات الجودة والإتقان.
+يرجى تأكيد موعد الاستلام والتنسيق معنا 🚚
+📞 للتواصل والاستفسار: يسعدنا دائماً خدمتكم!''';
+  }
+
   /// Opens WhatsApp chat directly with a pre-filled message
   static Future<bool> openWhatsApp({
     required String phone,
@@ -165,6 +205,44 @@ $notesSection━━━━━━━━━━━━━━━━━━
             },
           ),
           duration: const Duration(seconds: 8),
+        ),
+      );
+    }
+  }
+
+  /// Sends a 1-week or upcoming delivery reminder to the customer via WhatsApp
+  static Future<void> sendDeliveryReminderViaWhatsApp({
+    required BuildContext context,
+    required CustomerOrderModel order,
+    required int daysRemaining,
+    List<OrderPaymentModel> payments = const [],
+  }) async {
+    if (order.phone == null || order.phone!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('لا يوجد رقم هاتف مسجل لهذا العميل'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final message = buildDeliveryReminderMessage(
+      order: order,
+      daysRemaining: daysRemaining,
+      payments: payments,
+    );
+
+    final opened = await openWhatsApp(phone: order.phone!, message: message);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(opened
+              ? 'تم فتح واتساب لإرسال رسالة تذكير موعد التسليم للعميل!'
+              : 'تعذر فتح واتساب مباشرة. يرجى التأكد من تثبيت واتساب على الجهاز.'),
+          backgroundColor: const Color(0xFF1E3A2B),
+          duration: const Duration(seconds: 4),
         ),
       );
     }

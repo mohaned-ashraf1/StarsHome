@@ -192,7 +192,7 @@ class _StockMovementDialogState extends State<StockMovementDialog> {
               quantity: qty,
               referenceType: 'manual_adjustment',
               reasonNotes: _reasonController.text.trim().isNotEmpty ? _reasonController.text.trim() : null,
-              createdBy: auth.currentUser?.fullName ?? 'المدير',
+              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
             );
 
             if (context.mounted) Navigator.pop(context);

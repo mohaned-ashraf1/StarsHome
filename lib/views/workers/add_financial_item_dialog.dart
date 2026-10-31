@@ -214,7 +214,7 @@ class _AddFinancialItemDialogState extends State<AddFinancialItemDialog> {
                               amount: amount,
                               transactionDate: _selectedDate,
                               reasonNotes: _reasonController.text,
-                              createdBy: auth.currentUser?.fullName ?? 'المدير',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
 
                             // Reload accounts if advance was added

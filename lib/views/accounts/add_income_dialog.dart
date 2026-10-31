@@ -195,7 +195,7 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                                 amount: amount,
                                 transactionDate: _selectedDate,
                                 notes: _notesController.text,
-                                createdBy: auth.currentUser?.fullName ?? 'المدير',
+                                createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                               );
 
                               if (context.mounted) {

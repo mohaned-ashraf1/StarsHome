@@ -13,6 +13,7 @@ import 'add_financial_item_dialog.dart';
 import 'payroll_settlement_dialog.dart';
 import 'worker_ledger_screen.dart';
 import '../../core/utils/worker_payroll_receipt_helper.dart';
+import '../../widgets/user_role_badge.dart';
 
 class WorkersScreen extends StatefulWidget {
   const WorkersScreen({super.key});
@@ -320,6 +321,8 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
                             Row(
                               children: [
                                 Text(worker.fullName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                UserRoleBadge(createdBy: att.createdBy, compact: true),
                                 const Spacer(),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -423,9 +426,16 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 4),
-                Text(
-                  'التاريخ: ${DateHelper.formatDisplay(item.transactionDate)} • المسجل: ${item.createdBy}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'التاريخ: ${DateHelper.formatDisplay(item.transactionDate)}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                    const SizedBox(width: 6),
+                    UserRoleBadge(createdBy: item.createdBy, compact: true),
+                  ],
                 ),
                 if (item.reasonNotes != null && item.reasonNotes!.isNotEmpty)
                   Text('السبب: ${item.reasonNotes}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),

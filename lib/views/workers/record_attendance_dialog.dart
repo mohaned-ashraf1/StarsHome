@@ -356,7 +356,7 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                               arrivalTime: _selectedStatus == 'present' ? _tod24(_arrivalTime) : null,
                               departureTime: _selectedStatus == 'present' ? _tod24(_departureTime) : null,
                               notes: _notesController.text,
-                              createdBy: auth.currentUser?.fullName ?? 'المدير',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
 
                             if (context.mounted) {

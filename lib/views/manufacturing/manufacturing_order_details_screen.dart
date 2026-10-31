@@ -81,7 +81,7 @@ class _ManufacturingOrderDetailsScreenState extends State<ManufacturingOrderDeta
     try {
       await mProvider.issueMaterialsToWorkshop(
         orderId: _order.id,
-        createdBy: auth.currentUser?.fullName ?? 'المدير',
+        createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
       );
       _refreshOrder();
       if (mounted) {

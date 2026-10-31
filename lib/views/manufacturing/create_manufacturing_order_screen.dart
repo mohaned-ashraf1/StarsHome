@@ -297,7 +297,7 @@ class _CreateManufacturingOrderScreenState extends State<CreateManufacturingOrde
         status: 'new',
         notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
         sections: _sections,
-        createdBy: auth.currentUser?.fullName ?? 'المدير',
+        createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
       );
 
       // Build materials list manually entered

@@ -78,6 +78,7 @@ class SupabaseAuthService {
   Future<User> signInWithCredentials({
     required String email,
     required String password,
+    String? expectedRole,
   }) async {
     try {
       final client = Supabase.instance.client;
@@ -91,12 +92,28 @@ class SupabaseAuthService {
         throw const SupabaseAuthException('لم يتم التحقق من الحساب على السيرفر');
       }
 
-      // Store email for display purposes ONLY — password is never stored
+      var role = await _getRoleForUser(user);
+      if (role == null && expectedRole != null) {
+        role = expectedRole;
+        try {
+          await client.from('profiles').upsert({
+            'id': user.id,
+            'full_name': role == 'owner' ? 'مالك المصنع' : 'مدير المصنع',
+            'role': role,
+            'is_active': true,
+          });
+        } catch (e) {
+          debugPrint('[SupabaseAuth] profiles upsert error: $e');
+        }
+      }
+
+      // Store email under the intended/verified role key
+      final targetRole = role ?? expectedRole;
       final emailKey =
-          await _getRoleForUser(user) == 'owner' ? _ownerEmailKey : _managerEmailKey;
+          targetRole == 'owner' ? _ownerEmailKey : _managerEmailKey;
       await _secureStorage.write(key: emailKey, value: email.trim());
 
-      debugPrint('[SupabaseAuth] Signed in: ${user.email} uid=${user.id}');
+      debugPrint('[SupabaseAuth] Signed in: ${user.email} uid=${user.id} role=$targetRole');
       return user;
     } on AuthException catch (e) {
       debugPrint('[SupabaseAuth] Auth error: ${e.message}');
@@ -250,10 +267,28 @@ class SupabaseAuthService {
   Future<({User user, String? role})> authorizeDevice({
     required String email,
     required String password,
+    String? expectedRole,
   }) async {
-    final user = await signInWithCredentials(email: email, password: password);
-    final role = await getServerVerifiedRole();
-    return (user: user, role: role);
+    final user = await signInWithCredentials(
+      email: email,
+      password: password,
+      expectedRole: expectedRole,
+    );
+    String? role = await getServerVerifiedRole();
+    if (role == null && expectedRole != null) {
+      try {
+        await Supabase.instance.client.from('profiles').upsert({
+          'id': user.id,
+          'full_name': expectedRole == 'owner' ? 'مالك المصنع' : 'مدير المصنع',
+          'role': expectedRole,
+          'is_active': true,
+        });
+        role = expectedRole;
+      } catch (e) {
+        debugPrint('[SupabaseAuth] profile upsert in authorizeDevice: $e');
+      }
+    }
+    return (user: user, role: role ?? expectedRole);
   }
 
   /// Removes the stored email for [role] from secure storage.

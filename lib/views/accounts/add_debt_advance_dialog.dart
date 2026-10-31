@@ -340,7 +340,7 @@ class _AddDebtAdvanceDialogState extends State<AddDebtAdvanceDialog> {
 
                               final navigator = Navigator.of(context);
                               final amount = double.parse(_amountController.text.trim());
-                              final createdBy = auth.currentUser?.fullName ?? 'المالك';
+                              final createdBy = auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير');
 
                               final createdItem = await accounts.addDebtAdvance(
                                 personName: _personController.text.trim(),

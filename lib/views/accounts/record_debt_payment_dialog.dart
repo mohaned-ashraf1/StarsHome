@@ -271,7 +271,7 @@ class _RecordDebtPaymentDialogState extends State<RecordDebtPaymentDialog> {
 
                               final navigator = Navigator.of(context);
                               final amount = double.parse(_amountController.text.trim());
-                              final createdBy = auth.currentUser?.fullName ?? 'المالك';
+                              final createdBy = auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير');
 
                               await accounts.recordDebtRepayment(
                                 debtAdvanceId: widget.debtAdvance.id,

@@ -222,7 +222,7 @@ class _RecordContractorPaymentDialogState extends State<RecordContractorPaymentD
                               paymentDate: _selectedDate,
                               relatedOrder: _orderController.text,
                               notes: _notesController.text,
-                              createdBy: auth.currentUser?.fullName ?? 'المدير',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
 
                             // Sync accounts state

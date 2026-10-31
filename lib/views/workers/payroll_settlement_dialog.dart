@@ -231,7 +231,7 @@ class _PayrollSettlementDialogState extends State<PayrollSettlementDialog> {
                               paymentDate: _paymentDate,
                               paymentMethod: _paymentMethod,
                               notes: _notesController.text,
-                              createdBy: auth.currentUser?.fullName ?? 'المالك',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
 
                             await accounts.loadAll();

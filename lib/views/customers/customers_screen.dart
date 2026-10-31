@@ -10,6 +10,7 @@ import '../../models/order_payment_model.dart';
 import '../../providers/accounts_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/customers_provider.dart';
+import '../../widgets/user_role_badge.dart';
 import 'add_edit_order_dialog.dart';
 import 'add_payment_dialog.dart';
 import 'order_detail_screen.dart';
@@ -81,7 +82,7 @@ class CustomersScreen extends StatelessWidget {
                   totalAmount: totalAmount,
                   status: status,
                   notes: notes,
-                  createdBy: auth.currentUser?.fullName ?? 'المدير',
+                  createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                 );
 
                 customersProvider.addOrder(
@@ -115,7 +116,13 @@ class CustomersScreen extends StatelessWidget {
                   children: [
                     // 1. Metric Overview Cards
                     _buildOverviewMetrics(customersProvider),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+
+                    // Delivery Warning Alert Banner (if any orders due within 7 days or overdue)
+                    if (customersProvider.ordersDueSoon.isNotEmpty) ...[
+                      _buildDueSoonAlertBanner(context, customersProvider),
+                      const SizedBox(height: 14),
+                    ],
 
                     // 2. Search & Filter Bar
                     _buildSearchAndFilters(context, customersProvider),
@@ -305,6 +312,12 @@ class CustomersScreen extends StatelessWidget {
           child: Row(
             children: [
               _buildFilterChip('الكل', provider),
+              if (provider.ordersDueSoon.isNotEmpty)
+                _buildFilterChip(
+                  'due_soon',
+                  provider,
+                  label: '⚠️ تسليم خلال أسبوع (${provider.ordersDueSoon.length})',
+                ),
               _buildFilterChip('in_progress', provider, label: 'قيد التنفيذ'),
               _buildFilterChip('ready', provider, label: 'جاهز للتسليم'),
               _buildFilterChip('delivered', provider, label: 'تم التسليم'),
@@ -391,13 +404,21 @@ class CustomersScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        order.customerName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textWhite,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              order.customerName,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textWhite,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          UserRoleBadge(createdBy: order.createdBy, compact: true),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Row(
@@ -509,6 +530,77 @@ class CustomersScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
+
+            // Delivery Warning Alert Box (within 7 days or overdue)
+            if (order.isDueWithinOneWeek || order.isOverdue) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: (order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: (order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber).withOpacity(0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      order.isOverdue ? Icons.error_outline : Icons.alarm,
+                      size: 16,
+                      color: order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        order.deliveryWarningText ?? '',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber,
+                        ),
+                      ),
+                    ),
+                    if (order.phone != null && order.phone!.trim().isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () {
+                          WhatsAppService.sendDeliveryReminderViaWhatsApp(
+                            context: context,
+                            order: order,
+                            daysRemaining: order.daysUntilDelivery ?? 0,
+                            payments: payments,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF25D366),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'تذكير واتساب',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
 
             // Order Description Box
             Container(
@@ -633,7 +725,7 @@ class CustomersScreen extends StatelessWidget {
                               paymentDate: paymentDate,
                               paymentMethod: paymentMethod,
                               notes: notes,
-                              createdBy: auth.currentUser?.fullName ?? 'المدير',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
                             provider.addPayment(
                               payment,
@@ -726,7 +818,7 @@ class CustomersScreen extends StatelessWidget {
                         totalAmount: totalAmount,
                         status: status,
                         notes: notes,
-                        createdBy: auth.currentUser?.fullName ?? 'المدير',
+                        createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                       );
                       provider.addOrder(
                         order,
@@ -843,6 +935,70 @@ class CustomersScreen extends StatelessWidget {
                 initialPayment: initialPayment,
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDueSoonAlertBanner(BuildContext context, CustomersProvider provider) {
+    final count = provider.ordersDueSoon.length;
+    final isFiltered = provider.statusFilter == 'due_soon';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warningAmber.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warningAmber.withOpacity(0.6), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.warningAmber.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.alarm, color: AppColors.warningAmber, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '⚠️ تنبيه تسليم الطلبيات ($count طلبات)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.warningAmber,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'يوجد طلبيات يقترب موعد تسليمها خلال أسبوع أو تجاوزت الموعد المحدد.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textWhite),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              provider.setStatusFilter(isFiltered ? 'الكل' : 'due_soon');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isFiltered ? AppColors.surfaceDark : AppColors.warningAmber,
+              foregroundColor: isFiltered ? AppColors.warningAmber : AppColors.primaryNavy,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              isFiltered ? 'إلغاء الفلتر' : 'عرض الآن',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

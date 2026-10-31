@@ -86,6 +86,49 @@ class CustomerOrderModel {
     }
   }
 
+  /// Days remaining until delivery date (negative if overdue).
+  /// Returns null if no delivery date is set.
+  int? get daysUntilDelivery {
+    if (deliveryDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(deliveryDate!.year, deliveryDate!.month, deliveryDate!.day);
+    return target.difference(today).inDays;
+  }
+
+  /// Whether this order is due within 7 days (and not yet delivered or cancelled).
+  bool get isDueWithinOneWeek {
+    if (status == 'delivered' || status == 'cancelled') return false;
+    final days = daysUntilDelivery;
+    if (days == null) return false;
+    return days >= 0 && days <= 7;
+  }
+
+  /// Whether this order is overdue (past delivery date and not delivered/cancelled).
+  bool get isOverdue {
+    if (status == 'delivered' || status == 'cancelled') return false;
+    final days = daysUntilDelivery;
+    if (days == null) return false;
+    return days < 0;
+  }
+
+  /// User-facing warning badge text
+  String? get deliveryWarningText {
+    if (status == 'delivered' || status == 'cancelled') return null;
+    final days = daysUntilDelivery;
+    if (days == null) return null;
+    if (days < 0) {
+      return 'تأخر التسليم بـ ${-days} يوم!';
+    } else if (days == 0) {
+      return 'موعد التسليم اليوم!';
+    } else if (days == 1) {
+      return 'موعد التسليم غداً!';
+    } else if (days <= 7) {
+      return 'متبقي $days أيام على موعد التسليم';
+    }
+    return null;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

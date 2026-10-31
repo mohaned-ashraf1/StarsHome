@@ -6,6 +6,7 @@ import '../../core/utils/date_helper.dart';
 import '../../models/worker_model.dart';
 import '../../providers/workers_provider.dart';
 import 'add_financial_item_dialog.dart';
+import '../../widgets/user_role_badge.dart';
 
 class WorkerLedgerScreen extends StatelessWidget {
   final WorkerModel worker;
@@ -132,7 +133,7 @@ class WorkerLedgerScreen extends StatelessWidget {
                     ),
                     title: Text('${f.typeArabicName}: ${CurrencyFormatter.format(f.amount)}', style: TextStyle(fontWeight: FontWeight.bold, color: color)),
                     subtitle: Text('${DateHelper.formatDisplay(f.transactionDate)} • ${f.reasonNotes ?? 'بدون ملاحظات'}'),
-                    trailing: Text('المسجل: ${f.createdBy}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    trailing: UserRoleBadge(createdBy: f.createdBy, compact: true),
                   ),
                 );
               }),

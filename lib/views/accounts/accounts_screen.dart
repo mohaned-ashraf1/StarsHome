@@ -14,6 +14,7 @@ import 'add_purchase_dialog.dart';
 import 'add_income_dialog.dart';
 import 'add_debt_advance_dialog.dart';
 import 'record_debt_payment_dialog.dart';
+import '../../widgets/user_role_badge.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -837,7 +838,7 @@ class _AccountsScreenState extends State<AccountsScreen> with SingleTickerProvid
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('المسجل: ${p.createdBy}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                UserRoleBadge(createdBy: p.createdBy, compact: true),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -942,7 +943,14 @@ class _AccountsScreenState extends State<AccountsScreen> with SingleTickerProvid
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${DateHelper.formatDisplay(inc.transactionDate)} • المسجل: ${inc.createdBy}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(DateHelper.formatDisplay(inc.transactionDate), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    const SizedBox(width: 6),
+                    UserRoleBadge(createdBy: inc.createdBy, compact: true),
+                  ],
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

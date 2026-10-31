@@ -11,6 +11,8 @@ import '../../providers/workers_provider.dart';
 import '../../providers/contractors_provider.dart';
 import '../../providers/manufacturing_provider.dart';
 import '../../providers/shortages_provider.dart';
+import '../../providers/customers_provider.dart';
+import '../customers/customers_screen.dart';
 import '../manufacturing/manufacturing_orders_screen.dart';
 import '../shortages/shortages_screen.dart';
 
@@ -25,6 +27,7 @@ class DashboardScreen extends StatelessWidget {
     final contractors = Provider.of<ContractorsProvider>(context);
     final manufacturing = Provider.of<ManufacturingProvider>(context);
     final shortages = Provider.of<ShortagesProvider>(context);
+    final customers = Provider.of<CustomersProvider>(context);
 
     final totalIncome = dashboard.calculateTotalIncome(accounts);
     final totalExpenses = dashboard.calculateTotalExpenses(accounts);
@@ -47,6 +50,7 @@ class DashboardScreen extends StatelessWidget {
               contractors.loadAll();
               manufacturing.loadAll();
               shortages.loadAll();
+              customers.loadAll();
             },
           ),
         ],
@@ -58,7 +62,13 @@ class DashboardScreen extends StatelessWidget {
           children: [
             // Period Filter Bar
             _buildPeriodSelector(context, dashboard),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // Delivery Warning Alert Banner (if any customer orders due soon or overdue)
+            if (customers.ordersDueSoon.isNotEmpty) ...[
+              _buildDeliveryWarningCard(context, customers),
+              const SizedBox(height: 14),
+            ],
 
             // 4 Primary Summary Cards
             Row(
@@ -486,6 +496,97 @@ class DashboardScreen extends StatelessWidget {
         children: [
           Text(title, style: TextStyle(fontSize: 12, color: isBold ? AppColors.textWhite : AppColors.textMuted, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
           Text(value, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w600, color: color ?? AppColors.textWhite)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryWarningCard(BuildContext context, CustomersProvider customers) {
+    final dueCount = customers.ordersDueSoon.length;
+    final overdueCount = customers.ordersDueSoon.where((o) => o.isOverdue).length;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber).withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  overdueCount > 0 ? Icons.error_outline : Icons.alarm_rounded,
+                  color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'تنبيه مواعيد التسليم للعملاء ($dueCount طلبات)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      overdueCount > 0
+                          ? 'يوجد $overdueCount طلبات تجاوزت موعد التسليم و${dueCount - overdueCount} تستحق التسليم خلال أسبوع.'
+                          : 'يوجد $dueCount طلبات تستحق التسليم لعملائها خلال 7 أيام القادمة.',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            icon: Icon(
+              Icons.visibility_outlined,
+              size: 16,
+              color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+            ),
+            label: Text(
+              'متابعة الطلبيات وإرسال تذكيرات واتساب',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: overdueCount > 0 ? AppColors.expenseRed : AppColors.warningAmber,
+              ),
+            ),
+            onPressed: () {
+              customers.setStatusFilter('due_soon');
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CustomersScreen()),
+              );
+            },
+          ),
         ],
       ),
     );

@@ -71,6 +71,7 @@ class _DeviceAuthorizationScreenState
       final result = await SupabaseAuthService.instance.authorizeDevice(
         email: email,
         password: password,
+        expectedRole: widget.role,
       );
 
       // Step 2: Verify the server role matches the requested role
@@ -220,7 +221,9 @@ class _DeviceAuthorizationScreenState
           autocorrect: false,
           enableSuggestions: false,
           decoration: InputDecoration(
-            hintText: 'owner@starshomes.factory',
+            hintText: widget.role == 'owner'
+                ? 'himoonegm@gmail.com'
+                : 'mohanedelyasergy22@gmail.com',
             prefixIcon:
                 const Icon(Icons.email_outlined, color: AppColors.accentGold),
             border:

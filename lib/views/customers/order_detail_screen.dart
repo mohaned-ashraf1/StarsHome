@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/customers_provider.dart';
 import 'add_edit_order_dialog.dart';
 import 'add_payment_dialog.dart';
+import '../../widgets/user_role_badge.dart';
 import '../manufacturing/create_manufacturing_order_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -112,7 +113,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       totalAmount: totalAmount,
                       status: status,
                       notes: notes,
-                      createdBy: auth.currentUser?.fullName ?? 'المدير',
+                      createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                     );
                     customersProvider.updateOrder(updated);
                   },
@@ -209,7 +210,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               paymentDate: paymentDate,
                               paymentMethod: paymentMethod,
                               notes: notes,
-                              createdBy: auth.currentUser?.fullName ?? 'المدير',
+                              createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                             );
                             customersProvider.addPayment(
                               payment,
@@ -333,6 +334,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Text('سُجّل بواسطة: ', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                        UserRoleBadge(createdBy: order.createdBy, compact: true),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -396,6 +404,69 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
             ],
           ),
+          if (order.isDueWithinOneWeek || order.isOverdue) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: (order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: (order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber).withOpacity(0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    order.isOverdue ? Icons.error_outline : Icons.alarm,
+                    color: order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.deliveryWarningText ?? '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: order.isOverdue ? AppColors.expenseRed : AppColors.warningAmber,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'تذكير بموعد التسليم للتنسيق مع العميل',
+                          style: TextStyle(fontSize: 10, color: AppColors.textWhite),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (order.phone != null && order.phone!.trim().isNotEmpty)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.chat, size: 14),
+                      label: const Text('تذكير واتساب', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        WhatsAppService.sendDeliveryReminderViaWhatsApp(
+                          context: context,
+                          order: order,
+                          daysRemaining: order.daysUntilDelivery ?? 0,
+                          payments: provider.getPaymentsForOrder(order.id),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -770,6 +841,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               'بتاريخ: ${DateHelper.formatDisplay(p.paymentDate)}',
                               style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
                             ),
+                            const SizedBox(height: 4),
+                            UserRoleBadge(createdBy: p.createdBy, compact: true),
                           ],
                         ),
                       ),

@@ -18,6 +18,21 @@ class UserProfile {
 
   String get roleArabicName => isOwner ? 'مالك المصنع' : 'مدير المصنع';
 
+  /// Returns a clean signature string to store in `created_by`
+  /// e.g. "المالك (حسام)" or "المدير (مهند)" or simply "المالك" / "المدير"
+  String get signature {
+    final roleName = isOwner ? 'المالك' : 'المدير';
+    final trimmedName = fullName.trim();
+    if (trimmedName.isNotEmpty &&
+        trimmedName != 'مالك المصنع' &&
+        trimmedName != 'مدير المصنع' &&
+        trimmedName != 'المالك' &&
+        trimmedName != 'المدير') {
+      return '$roleName ($trimmedName)';
+    }
+    return roleName;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
