@@ -33,18 +33,32 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  bool _isManualSyncing = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SyncService.instance.syncDataVersionNotifier.addListener(_onSyncDataUpdated);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<InventoryProvider>(context, listen: false).loadAll();
       Provider.of<ShortagesProvider>(context, listen: false).loadAll();
+      // Auto-sync on startup
+      SyncService.instance.syncNow().then((_) {
+        if (mounted) SyncService.reloadAllProviders(context);
+      }).ignore();
     });
+  }
+
+  void _onSyncDataUpdated() {
+    if (mounted) {
+      SyncService.reloadAllProviders(context);
+    }
   }
 
   @override
   void dispose() {
+    SyncService.instance.syncDataVersionNotifier.removeListener(_onSyncDataUpdated);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -54,8 +68,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       debugPrint('[HomeScreen] App resumed — triggering background sync');
-      SyncService.instance.syncNow().ignore();
+      SyncService.instance.syncNow().then((_) {
+        if (mounted) SyncService.reloadAllProviders(context);
+      }).ignore();
     }
+  }
+
+  Future<void> _handleManualSync() async {
+    if (_isManualSyncing) return;
+    setState(() => _isManualSyncing = true);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentGold),
+            ),
+            SizedBox(width: 12),
+            Text('جاري المزامنة مع السيرفر السحابي...', style: TextStyle(color: Colors.white, fontSize: 13)),
+          ],
+        ),
+        backgroundColor: AppColors.surfaceDark,
+        duration: Duration(seconds: 4),
+      ),
+    );
+
+    final success = await SyncService.instance.syncNow();
+    if (!mounted) return;
+    await SyncService.reloadAllProviders(context);
+    if (!mounted) return;
+    setState(() => _isManualSyncing = false);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '✅ تمت المزامنة وتحديث كافة البيانات بنجاح!'
+              : '⚠️ تعذرت المزامنة — يرجى التأكد من الاتصال بالإنترنت',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        backgroundColor: success ? AppColors.incomeGreen : AppColors.expenseRed,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -157,14 +217,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             RefreshIndicator(
               onRefresh: () async {
-                await accounts.loadAll();
-                await workers.loadAll();
-                await contractors.loadAll();
-                await customers.loadAll(accountsProvider: accounts);
-                await manufacturing.loadAll();
-                await inventory.loadAll();
-                await shortages.loadAll();
                 await SyncService.instance.syncNow();
+                if (!mounted) return;
+                await SyncService.reloadAllProviders(this.context);
               },
               color: AppColors.accentGold,
               backgroundColor: AppColors.surfaceDark,
@@ -456,59 +511,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String badgeText;
     IconData badgeIcon;
 
-    switch (status) {
-      case SyncStatus.online:
-      case SyncStatus.synced:
-        badgeColor = AppColors.syncConnected;
-        badgeText = '';
-        badgeIcon = Icons.cloud_done_rounded;
-        break;
-      case SyncStatus.syncing:
-        badgeColor = AppColors.syncSyncing;
-        badgeText = '';
-        badgeIcon = Icons.sync_rounded;
-        break;
-      case SyncStatus.pendingChanges:
-        badgeColor = AppColors.syncPending;
-        badgeText = '$pendingCount';
-        badgeIcon = Icons.cloud_queue_rounded;
-        break;
-      case SyncStatus.offline:
-        badgeColor = AppColors.syncOffline;
-        badgeText = '';
-        badgeIcon = Icons.cloud_off_rounded;
-        break;
+    if (_isManualSyncing || status == SyncStatus.syncing) {
+      badgeColor = AppColors.accentGold;
+      badgeText = 'مزامنة...';
+      badgeIcon = Icons.sync_rounded;
+    } else {
+      switch (status) {
+        case SyncStatus.online:
+        case SyncStatus.synced:
+          badgeColor = AppColors.syncConnected;
+          badgeText = '';
+          badgeIcon = Icons.cloud_done_rounded;
+          break;
+        case SyncStatus.syncing:
+          badgeColor = AppColors.syncSyncing;
+          badgeText = '';
+          badgeIcon = Icons.sync_rounded;
+          break;
+        case SyncStatus.pendingChanges:
+          badgeColor = AppColors.syncPending;
+          badgeText = '$pendingCount';
+          badgeIcon = Icons.cloud_queue_rounded;
+          break;
+        case SyncStatus.offline:
+          badgeColor = AppColors.syncOffline;
+          badgeText = '';
+          badgeIcon = Icons.cloud_off_rounded;
+          break;
+      }
     }
 
-    return InkWell(
-      onTap: () {
-        // Navigate to full sync status screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SyncStatusScreen()),
-        );
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: badgeColor.withOpacity(0.16),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(badgeIcon, size: 16, color: badgeColor),
-            if (badgeText.isNotEmpty) ...[
-              const SizedBox(width: 4),
-              Text(
-                badgeText,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: badgeColor),
-              ),
+    return Tooltip(
+      message: 'اضغط لمزامنة فورية (اضغط مطولاً لسجل المزامنة)',
+      child: InkWell(
+        onTap: _handleManualSync,
+        onLongPress: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SyncStatusScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeColor.withOpacity(0.16),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: badgeColor.withOpacity(0.5), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(badgeIcon, size: 16, color: badgeColor),
+              if (badgeText.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  badgeText,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: badgeColor),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

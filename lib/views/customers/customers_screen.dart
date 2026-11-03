@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/whatsapp_service.dart';
+import '../../core/services/sync_service.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/customer_receipt_helper.dart';
 import '../../core/utils/date_helper.dart';
@@ -41,9 +42,30 @@ class CustomersScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.accentGold),
-            tooltip: 'تحديث البيانات',
-            onPressed: () => customersProvider.loadAll(),
+            icon: const Icon(Icons.sync_rounded, color: AppColors.accentGold),
+            tooltip: 'مزامنة وتحديث الطلبيات',
+            onPressed: () async {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('جاري المزامنة مع السيرفر السحابي...'),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: AppColors.surfaceDark,
+                ),
+              );
+              await SyncService.instance.syncNow();
+              await customersProvider.loadAll();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تم تحديث ومزامنة الطلبيات بنجاح!'),
+                    backgroundColor: AppColors.incomeGreen,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -105,7 +127,10 @@ class CustomersScreen extends StatelessWidget {
       body: customersProvider.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.accentGold))
           : RefreshIndicator(
-              onRefresh: () async => await customersProvider.loadAll(),
+              onRefresh: () async {
+                await SyncService.instance.syncNow();
+                await customersProvider.loadAll();
+              },
               color: AppColors.accentGold,
               backgroundColor: AppColors.surfaceDark,
               child: SingleChildScrollView(

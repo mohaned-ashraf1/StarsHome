@@ -14,6 +14,7 @@ import 'add_purchase_dialog.dart';
 import 'add_income_dialog.dart';
 import 'add_debt_advance_dialog.dart';
 import 'record_debt_payment_dialog.dart';
+import '../../core/services/sync_service.dart';
 import '../../widgets/user_role_badge.dart';
 
 class AccountsScreen extends StatefulWidget {
@@ -70,9 +71,30 @@ class _AccountsScreenState extends State<AccountsScreen> with SingleTickerProvid
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.accentGold),
-            tooltip: 'تحديث الحسابات',
-            onPressed: () => accounts.loadAll(),
+            icon: const Icon(Icons.sync_rounded, color: AppColors.accentGold),
+            tooltip: 'مزامنة وتحديث الحسابات',
+            onPressed: () async {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('جاري المزامنة مع السيرفر السحابي...'),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: AppColors.surfaceDark,
+                ),
+              );
+              await SyncService.instance.syncNow();
+              await accounts.loadAll();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تم تحديث ومزامنة الحسابات بنجاح!'),
+                    backgroundColor: AppColors.incomeGreen,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
           ),
         ],
         bottom: TabBar(

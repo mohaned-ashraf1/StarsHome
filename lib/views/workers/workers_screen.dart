@@ -13,6 +13,7 @@ import 'add_financial_item_dialog.dart';
 import 'payroll_settlement_dialog.dart';
 import 'worker_ledger_screen.dart';
 import '../../core/utils/worker_payroll_receipt_helper.dart';
+import '../../core/services/sync_service.dart';
 import '../../widgets/user_role_badge.dart';
 
 class WorkersScreen extends StatefulWidget {
@@ -48,9 +49,30 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
         title: const Text('إدارة العمال وكشف الرواتب'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.accentGold),
-            tooltip: 'تحديث بيانات العمال',
-            onPressed: () => workers.loadAll(),
+            icon: const Icon(Icons.sync_rounded, color: AppColors.accentGold),
+            tooltip: 'مزامنة وتحديث بيانات العمال',
+            onPressed: () async {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('جاري المزامنة مع السيرفر السحابي...'),
+                  duration: Duration(seconds: 2),
+                  backgroundColor: AppColors.surfaceDark,
+                ),
+              );
+              await SyncService.instance.syncNow();
+              await workers.loadAll();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تم تحديث ومزامنة بيانات العمال بنجاح!'),
+                    backgroundColor: AppColors.incomeGreen,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
           ),
         ],
         bottom: TabBar(

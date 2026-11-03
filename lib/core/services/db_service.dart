@@ -20,7 +20,8 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 ///  v6 — add last_error column to sync_queue (for retry tracking)
 ///  v7 — add supplier_name, minimum_limit alias (min_stock_level renamed), updated_at
 ///         to inventory_items; category column in material_shortages
-const int _kDbVersion = 7;
+///  v8 — ensure device_id column exists on all SQLite tables for Supabase parity
+const int _kDbVersion = 8;
 
 class DBService {
   static final DBService instance = DBService._internal();
@@ -73,6 +74,7 @@ class DBService {
         await db.execute(
           "UPDATE workers SET standard_end_time = '18:00' WHERE standard_end_time = '19:00'",
         );
+        await _applyV8Columns(db);
       },
     );
 
@@ -91,6 +93,7 @@ class DBService {
     await _applyV5Columns(db);
     await _applyV6Columns(db);
     await _applyV7Columns(db);
+    await _applyV8Columns(db);
     await _seedDefaults(db);
   }
 
@@ -108,6 +111,7 @@ class DBService {
     if (oldVersion < 5) await _applyV5Columns(db);
     if (oldVersion < 6) await _applyV6Columns(db);
     if (oldVersion < 7) await _applyV7Columns(db);
+    if (oldVersion < 8) await _applyV8Columns(db);
   }
 
   // ──────────────────────────────────────────────────
@@ -536,6 +540,21 @@ class DBService {
     await _safeAlter(db, 'ALTER TABLE material_shortages ADD COLUMN urgency TEXT DEFAULT \'normal\'');
     await _safeAlter(db, 'ALTER TABLE material_shortages ADD COLUMN related_order_number TEXT');
     await _safeAlter(db, 'ALTER TABLE material_shortages ADD COLUMN quantity_needed REAL');
+  }
+
+  Future<void> _applyV8Columns(Database db) async {
+    final tables = [
+      'purchases', 'incomes', 'workers', 'worker_attendance',
+      'worker_financial_items', 'worker_payroll_settlements',
+      'contractors', 'contractor_payments', 'debts_advances',
+      'debt_advance_payments', 'customer_orders', 'order_payments',
+      'inventory_items', 'inventory_movements', 'manufacturing_orders',
+      'manufacturing_order_dimensions', 'manufacturing_order_materials',
+      'manufacturing_checklist', 'inventory_reservations', 'material_shortages',
+    ];
+    for (final table in tables) {
+      await _safeAlter(db, 'ALTER TABLE $table ADD COLUMN device_id TEXT');
+    }
   }
 
   /// Executes an ALTER TABLE statement, silently ignoring "duplicate column" errors.

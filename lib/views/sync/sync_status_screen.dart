@@ -132,13 +132,16 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     setState(() => _isSyncing = true);
     final success = await SyncService.instance.syncNow();
     await _loadQueueItems();
+    if (mounted) {
+      await SyncService.reloadAllProviders(context);
+    }
     setState(() => _isSyncing = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(success
-              ? 'تمت المزامنة بنجاح'
-              : 'تعذرت المزامنة — يرجى التحقق من الاتصال'),
+              ? '✅ تمت المزامنة وتحديث كافة البيانات في التطبيق بنجاح'
+              : '⚠️ تعذرت المزامنة — يرجى التحقق من الاتصال بالإنترنت'),
           backgroundColor: success ? AppColors.incomeGreen : AppColors.expenseRed,
         ),
       );

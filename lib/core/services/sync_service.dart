@@ -1,10 +1,18 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'db_service.dart';
+import '../../providers/accounts_provider.dart';
+import '../../providers/workers_provider.dart';
+import '../../providers/contractors_provider.dart';
+import '../../providers/customers_provider.dart';
+import '../../providers/manufacturing_provider.dart';
+import '../../providers/inventory_provider.dart';
+import '../../providers/shortages_provider.dart';
 
 enum SyncStatus {
   online,
@@ -46,6 +54,33 @@ class SyncService {
   final ValueNotifier<SyncStatus> statusNotifier =
       ValueNotifier<SyncStatus>(SyncStatus.offline);
   final ValueNotifier<int> pendingCountNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> syncDataVersionNotifier = ValueNotifier<int>(0);
+
+  /// Reloads all provider caches from SQLite into the active Flutter UI.
+  static Future<void> reloadAllProviders(BuildContext context) async {
+    try {
+      final accounts = Provider.of<AccountsProvider>(context, listen: false);
+      final workers = Provider.of<WorkersProvider>(context, listen: false);
+      final contractors = Provider.of<ContractorsProvider>(context, listen: false);
+      final customers = Provider.of<CustomersProvider>(context, listen: false);
+      final manufacturing = Provider.of<ManufacturingProvider>(context, listen: false);
+      final inventory = Provider.of<InventoryProvider>(context, listen: false);
+      final shortages = Provider.of<ShortagesProvider>(context, listen: false);
+
+      await Future.wait([
+        accounts.loadAll(),
+        workers.loadAll(),
+        contractors.loadAll(),
+        customers.loadAll(accountsProvider: accounts),
+        manufacturing.loadAll(),
+        inventory.loadAll(),
+        shortages.loadAll(),
+      ]);
+      debugPrint('[SyncService] All providers reloaded successfully');
+    } catch (e) {
+      debugPrint('[SyncService] reloadAllProviders error: $e');
+    }
+  }
 
   // ──────────────────────────────────────────────────
   // Initialisation
@@ -209,6 +244,7 @@ class SyncService {
       await checkPendingQueueCount();
       _updateStatus(SyncStatus.synced);
       debugPrint('[SyncService] Sync complete');
+      syncDataVersionNotifier.value++;
       return true;
     } catch (e) {
       debugPrint('[SyncService] Sync failed: $e');
@@ -311,11 +347,46 @@ class SyncService {
     }
   }
 
+  final Map<String, Set<String>> _tableColumnsCache = {};
+
+  Future<Set<String>> _getTableColumns(Database db, String table) async {
+    if (_tableColumnsCache.containsKey(table) && _tableColumnsCache[table]!.isNotEmpty) {
+      return _tableColumnsCache[table]!;
+    }
+    try {
+      final info = await db.rawQuery('PRAGMA table_info($table)');
+      final cols = info.map((r) => r['name'].toString().toLowerCase()).toSet();
+      _tableColumnsCache[table] = cols;
+      return cols;
+    } catch (e) {
+      debugPrint('[SyncService] PRAGMA table_info error for $table: $e');
+      return {};
+    }
+  }
+
+  Map<String, dynamic> _sanitizeRowForSqlite(
+    Map<String, dynamic> raw,
+    Set<String> validColumns,
+  ) {
+    final sanitized = <String, dynamic>{};
+    for (final entry in raw.entries) {
+      final keyLower = entry.key.toLowerCase();
+      if (validColumns.isEmpty || validColumns.contains(keyLower)) {
+        var val = entry.value;
+        if (val is bool) {
+          val = val ? 1 : 0;
+        }
+        sanitized[entry.key] = val;
+      }
+    }
+    return sanitized;
+  }
+
   // ──────────────────────────────────────────────────
   // Paginated pull with last-write-wins conflict resolution
   // ──────────────────────────────────────────────────
 
-  /// Pulls all remote rows for [table] using keyset pagination,
+  /// Pulls all remote rows for [table] using reliable range pagination,
   /// applying a last-write-wins strategy: the row with the newer
   /// updated_at timestamp wins. For tables without updated_at,
   /// remote always wins (ConflictAlgorithm.replace).
@@ -324,27 +395,16 @@ class SyncService {
 
     try {
       final db = await DBService.instance.database;
-      String? lastId;
+      int offset = 0;
       int totalPulled = 0;
 
       while (true) {
-        List<Map<String, dynamic>> remoteRows;
+        final List<dynamic> response = await _supabaseClient!
+            .from(table)
+            .select()
+            .range(offset, offset + _pageSize - 1);
 
-        if (lastId == null) {
-          remoteRows = await _supabaseClient!
-              .from(table)
-              .select()
-              .order('id')
-              .limit(_pageSize);
-        } else {
-          remoteRows = await _supabaseClient!
-              .from(table)
-              .select()
-              .gt('id', lastId)
-              .order('id')
-              .limit(_pageSize);
-        }
-
+        final remoteRows = response.cast<Map<String, dynamic>>();
         if (remoteRows.isEmpty) break;
 
         for (final row in remoteRows) {
@@ -352,9 +412,8 @@ class SyncService {
         }
 
         totalPulled += remoteRows.length;
-        lastId = remoteRows.last['id']?.toString();
-
         if (remoteRows.length < _pageSize) break; // last page
+        offset += _pageSize;
       }
 
       if (totalPulled > 0) {
@@ -366,7 +425,7 @@ class SyncService {
     }
   }
 
-  /// Merges a single remote row into the local database.
+  /// Merges a single remote row into the local database with automatic schema sanitization.
   /// Last-write-wins: if local row has a newer updated_at, skip the remote row.
   Future<void> _mergeRow(
     Database db,
@@ -377,6 +436,9 @@ class SyncService {
     if (id == null) return;
 
     try {
+      final validCols = await _getTableColumns(db, table);
+      final sanitizedRow = _sanitizeRowForSqlite(remoteRow, validCols);
+
       final existing = await db.query(table,
           where: 'id = ?', whereArgs: [id], limit: 1);
 
@@ -384,9 +446,10 @@ class SyncService {
         // New row from remote — insert it
         await db.insert(
           table,
-          remoteRow,
-          conflictAlgorithm: ConflictAlgorithm.ignore,
+          sanitizedRow,
+          conflictAlgorithm: ConflictAlgorithm.replace,
         );
+        debugPrint('[SyncService] ✓ Inserted row into $table (id=$id)');
         return;
       }
 
@@ -408,11 +471,12 @@ class SyncService {
       // Remote wins (newer or no timestamp to compare)
       await db.insert(
         table,
-        remoteRow,
+        sanitizedRow,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      debugPrint('[SyncService] ✓ Updated row in $table (id=$id)');
     } catch (e) {
-      debugPrint('[SyncService] mergeRow error ($table id=$id): $e');
+      debugPrint('[SyncService] ✗ mergeRow error ($table id=$id): $e');
     }
   }
 }

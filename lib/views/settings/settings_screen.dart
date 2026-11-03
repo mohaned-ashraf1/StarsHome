@@ -512,8 +512,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () async {
                         final ok =
                             await SyncService.instance.syncNow();
+                        if (!mounted) return;
+                        await SyncService.reloadAllProviders(this.context);
                         _showSnackBar(ok
-                            ? 'تمت المزامنة بنجاح'
+                            ? 'تمت المزامنة وتحديث البيانات بنجاح'
                             : 'تعذرت المزامنة');
                       },
                       child: const Text('مزامنة الآن',
