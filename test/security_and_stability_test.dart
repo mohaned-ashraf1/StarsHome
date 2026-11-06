@@ -17,9 +17,9 @@
 //   These are explicitly marked [BLOCKED] with the infrastructure required.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_home/core/services/auth_service.dart';
-import 'package:stars_home/core/services/supabase_auth_service.dart';
-import 'package:stars_home/core/services/sync_service.dart';
+import 'package:stars_home/backend/services/auth_service.dart';
+import 'package:stars_home/backend/services/supabase_auth_service.dart';
+import 'package:stars_home/backend/services/sync_service.dart';
 
 void main() {
   // ══════════════════════════════════════════════════════════════════

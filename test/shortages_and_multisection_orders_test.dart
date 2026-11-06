@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_home/models/furniture_section_model.dart';
-import 'package:stars_home/models/manufacturing_order_model.dart';
-import 'package:stars_home/models/manufacturing_material_model.dart';
-import 'package:stars_home/models/material_shortage_model.dart';
-import 'package:stars_home/core/utils/furniture_templates.dart';
-import 'package:stars_home/core/services/manufacturing_pdf_service.dart';
+import 'package:stars_home/backend/models/furniture_section_model.dart';
+import 'package:stars_home/backend/models/manufacturing_order_model.dart';
+import 'package:stars_home/backend/models/manufacturing_material_model.dart';
+import 'package:stars_home/backend/models/material_shortage_model.dart';
+import 'package:stars_home/backend/utils/furniture_templates.dart';
+import 'package:stars_home/backend/services/manufacturing_pdf_service.dart';
 
 void main() {
   group('STARS HOMES - Multi-Section Manufacturing & Shortages Unit Tests', () {

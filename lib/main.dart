@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'core/constants/app_theme.dart';
-import 'providers/auth_provider.dart';
-import 'providers/accounts_provider.dart';
-import 'providers/workers_provider.dart';
-import 'providers/contractors_provider.dart';
-import 'providers/dashboard_provider.dart';
-import 'providers/customers_provider.dart';
-import 'providers/inventory_provider.dart';
-import 'providers/manufacturing_provider.dart';
-import 'providers/shortages_provider.dart';
-import 'views/splash/splash_screen.dart';
+import 'package:stars_home/frontend/constants/app_theme.dart';
+import 'package:stars_home/backend/providers/auth_provider.dart';
+import 'package:stars_home/backend/providers/accounts_provider.dart';
+import 'package:stars_home/backend/providers/workers_provider.dart';
+import 'package:stars_home/backend/providers/contractors_provider.dart';
+import 'package:stars_home/backend/providers/dashboard_provider.dart';
+import 'package:stars_home/backend/providers/customers_provider.dart';
+import 'package:stars_home/backend/providers/inventory_provider.dart';
+import 'package:stars_home/backend/providers/manufacturing_provider.dart';
+import 'package:stars_home/backend/providers/shortages_provider.dart';
+import 'package:stars_home/frontend/views/splash/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_home/core/utils/date_helper.dart';
-import 'package:stars_home/core/utils/currency_formatter.dart';
-import 'package:stars_home/models/purchase_model.dart';
-import 'package:stars_home/models/worker_financial_item_model.dart';
+import 'package:stars_home/backend/utils/date_helper.dart';
+import 'package:stars_home/backend/utils/currency_formatter.dart';
+import 'package:stars_home/backend/models/purchase_model.dart';
+import 'package:stars_home/backend/models/worker_financial_item_model.dart';
 
 void main() {
   group('STARS HOMES - Financial & Accounting Integrity Tests', () {

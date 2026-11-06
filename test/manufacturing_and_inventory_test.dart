@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stars_home/models/inventory_item_model.dart';
-import 'package:stars_home/models/inventory_movement_model.dart';
-import 'package:stars_home/models/manufacturing_order_model.dart';
-import 'package:stars_home/models/manufacturing_dimension_model.dart';
-import 'package:stars_home/models/manufacturing_material_model.dart';
-import 'package:stars_home/models/manufacturing_checklist_item_model.dart';
-import 'package:stars_home/core/services/manufacturing_pdf_service.dart';
+import 'package:stars_home/backend/models/inventory_item_model.dart';
+import 'package:stars_home/backend/models/inventory_movement_model.dart';
+import 'package:stars_home/backend/models/manufacturing_order_model.dart';
+import 'package:stars_home/backend/models/manufacturing_dimension_model.dart';
+import 'package:stars_home/backend/models/manufacturing_material_model.dart';
+import 'package:stars_home/backend/models/manufacturing_checklist_item_model.dart';
+import 'package:stars_home/backend/services/manufacturing_pdf_service.dart';
 
 void main() {
   group('STARS HOMES - Manufacturing & Inventory Domain Logic Tests', () {
