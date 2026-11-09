@@ -39,7 +39,18 @@ jobs:
 
       - name: Compile Windows Setup Installer (Inno Setup)
         run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows_installer\installer_script.iss
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+          if (-not $iscc) {
+            $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          Write-Host "Compiling Inno Setup installer using: $iscc"
+          & $iscc windows_installer\installer_script.iss
+          if (-not (Test-Path "windows_installer\STARS_HOMES_ERP_Setup.exe")) {
+            throw "Error: STARS_HOMES_ERP_Setup.exe was not created!"
+          }
 
       - name: Compress Portable Windows Zip
         run: |
@@ -92,3 +103,4 @@ jobs:
           name: STARS_HOMES_ERP_Android_APK
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+

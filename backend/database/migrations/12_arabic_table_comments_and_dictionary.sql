@@ -86,3 +86,4 @@ COMMENT ON TABLE public.manufacturing_checklist IS 'قائمة مراحل الج
 COMMENT ON TABLE public.profiles IS 'ملفات مستخدمي النظام وتحديد دور المالك أو المدير وصلاحيات الوصول';
 COMMENT ON COLUMN public.profiles.role IS 'دور المستخدم: owner (مالك المصنع)، manager (مدير المصنع)';
 COMMENT ON TABLE public.audit_logs IS 'سجل العمليات والرقابة لتتبع أي إدخال أو تعديل في النظام';
+

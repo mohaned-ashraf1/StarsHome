@@ -60,3 +60,4 @@ stars_home/
 ## 4. مجلد مثبت الويندوز (`/windows_installer`)
 
 يحتوي على ملف `installer_script.iss` المخصص لتوليد مثبت الويندوز المباشر `STARS_HOMES_ERP_Setup.exe` بدون الحاجة لأي برامج تطوير.
+

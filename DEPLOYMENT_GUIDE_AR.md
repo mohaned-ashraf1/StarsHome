@@ -65,3 +65,4 @@ flutter build web --release
    ```
 3. ارفع التعديل إلى المستودع (`git commit` ثم `git push`).
 4. سيقوم GitHub Actions آلياً بتجميع النسخة الجديدة وحفظها جاهزة للتحميل والتثبيت.
+

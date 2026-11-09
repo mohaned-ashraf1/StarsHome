@@ -32,3 +32,4 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.check_upcoming_deliveries() IS 'فحص الطلبات المستحقة للتسليم خلال 7 أيام وتجهيز بيانات التنبيه للعميل والمدير';
+
