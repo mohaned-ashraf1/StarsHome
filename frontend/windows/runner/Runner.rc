@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.starshomes.factory" "\0"
-            VALUE "FileDescription", "stars_home" "\0"
+            VALUE "FileDescription", "STARS HOMES ERP" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "stars_home" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.starshomes.factory. All rights reserved." "\0"
             VALUE "OriginalFilename", "stars_home.exe" "\0"
-            VALUE "ProductName", "stars_home" "\0"
+            VALUE "ProductName", "STARS HOMES ERP" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
