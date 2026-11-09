@@ -397,6 +397,7 @@ class SyncService {
       final db = await DBService.instance.database;
       int offset = 0;
       int totalPulled = 0;
+      final remoteIds = <String>{};
 
       while (true) {
         final List<dynamic> response = await _supabaseClient!
@@ -408,6 +409,8 @@ class SyncService {
         if (remoteRows.isEmpty) break;
 
         for (final row in remoteRows) {
+          final rid = row['id']?.toString();
+          if (rid != null) remoteIds.add(rid);
           await _mergeRow(db, table, Map<String, dynamic>.from(row));
         }
 
@@ -418,6 +421,31 @@ class SyncService {
 
       if (totalPulled > 0) {
         debugPrint('[SyncService] Pulled $totalPulled rows from $table');
+      }
+
+      // Reconcile deleted rows:
+      // Any row in SQLite that is NOT on Supabase and is NOT in local sync_queue pending insert
+      // was deleted on the server or on the other device!
+      try {
+        final localRows = await db.query(table, columns: ['id']);
+        final localIds = localRows.map((r) => r['id'].toString()).toSet();
+        final missingOnRemote = localIds.difference(remoteIds);
+
+        for (final missingId in missingOnRemote) {
+          final pendingInsert = await db.query(
+            'sync_queue',
+            columns: ['id'],
+            where: "table_name = ? AND record_id = ? AND operation = 'insert' AND status != 'completed'",
+            whereArgs: [table, missingId],
+            limit: 1,
+          );
+          if (pendingInsert.isEmpty) {
+            await db.delete(table, where: 'id = ?', whereArgs: [missingId]);
+            debugPrint('[SyncService] Reconciled deletion: removed $missingId from $table');
+          }
+        }
+      } catch (e) {
+        debugPrint('[SyncService] Deletion reconciliation error for $table: $e');
       }
     } catch (e) {
       // Non-fatal — table may not exist on remote yet

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stars_home/frontend/constants/app_colors.dart';
 import 'package:stars_home/backend/services/whatsapp_service.dart';
+import 'package:stars_home/backend/services/sync_service.dart';
 import 'package:stars_home/backend/utils/currency_formatter.dart';
 import 'package:stars_home/backend/utils/customer_receipt_helper.dart';
 import 'package:stars_home/backend/utils/date_helper.dart';
@@ -99,6 +100,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     required double totalAmount,
                     required String status,
                     String? notes,
+                    List<OrderSectionItem>? sections,
                     double? initialPayment,
                     String paymentMethod = 'نقدي',
                     String? paymentNotes,
@@ -113,6 +115,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       totalAmount: totalAmount,
                       status: status,
                       notes: notes,
+                      sections: sections,
                       createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                     );
                     customersProvider.updateOrder(updated);
@@ -921,10 +924,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.expenseRed),
             child: const Text('حذف نهائي', style: TextStyle(color: AppColors.textWhite)),
-            onPressed: () {
-              provider.deleteOrder(order.id, accountsProvider: accountsProvider);
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.pop(context); // Go back to customers list
+              await provider.deleteOrder(order.id, accountsProvider: accountsProvider);
+              await SyncService.instance.syncNow();
+              if (context.mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم حذف الطلبية ومزامنة الحذف سحابياً بنجاح')),
+                );
+              }
             },
           ),
         ],

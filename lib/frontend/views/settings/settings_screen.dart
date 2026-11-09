@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stars_home/frontend/constants/app_colors.dart';
 import 'package:stars_home/backend/services/supabase_auth_service.dart';
 import 'package:stars_home/backend/services/sync_service.dart';
+import 'package:stars_home/backend/services/db_service.dart';
 import 'package:stars_home/backend/utils/export_helper.dart';
 import 'package:stars_home/backend/providers/accounts_provider.dart';
 import 'package:stars_home/backend/providers/auth_provider.dart';
@@ -196,6 +197,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       _showSnackBar('خطأ أثناء التصدير: $e', isError: true);
+    }
+  }
+
+  Future<void> _showClearAllDataDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surfaceDark,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.expenseRed),
+            SizedBox(width: 8),
+            Text('تصفير كافة البيانات؟',
+                style: TextStyle(color: AppColors.textWhite)),
+          ],
+        ),
+        content: const Text(
+          'سيتم حذف جميع سجلات الطلبات، المصاريف، الإيرادات، العمال، والمخزون المحفوظة على هذا الهاتف بشكل نهائي.\n\nهل ترغب بالاستمرار؟',
+          style: TextStyle(color: AppColors.textMuted, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.expenseRed),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('نعم، امسح كل شيء',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await DBService.instance.clearAllOperationalData();
+      if (!mounted) return;
+      await SyncService.reloadAllProviders(context);
+      _showSnackBar('تم مسح وتصفير كافة البيانات بنجاح');
+    } catch (e) {
+      _showSnackBar('حدث خطأ أثناء المسح: $e', isError: true);
     }
   }
 
@@ -416,6 +464,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ]),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── Clear Local Data ───────────────────────────────────────
+            _buildSectionHeader(
+                'تصفير البيانات والبدء من جديد', Icons.delete_sweep_outlined),
+            const SizedBox(height: 10),
+            _buildCard(
+              children: [
+                const Text(
+                  'مسح كافة سجلات الطلبات والمصاريف والعمال والمخزون المحفوظة على هذا الهاتف لبدء صفحة جديدة نظيفة.',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.expenseRed,
+                    side: const BorderSide(
+                        color: AppColors.expenseRed, width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.delete_forever_outlined,
+                      color: AppColors.expenseRed),
+                  label: const Text('مسح وتصفير كافة البيانات من الهاتف',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  onPressed: _showClearAllDataDialog,
+                ),
               ],
             ),
             const SizedBox(height: 30),

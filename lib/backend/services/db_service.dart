@@ -627,4 +627,38 @@ class DBService {
 
     await batch.commit(noResult: true);
   }
+
+  /// Clears all operational / transactional records from the local SQLite database.
+  /// Keeps app settings, categories, and suggestions intact.
+  Future<void> clearAllOperationalData() async {
+    final db = await database;
+    final tables = [
+      'customer_orders',
+      'order_payments',
+      'purchases',
+      'incomes',
+      'workers',
+      'worker_attendance',
+      'worker_financial_items',
+      'worker_payroll_settlements',
+      'contractors',
+      'contractor_payments',
+      'debts_advances',
+      'debt_advance_payments',
+      'inventory_items',
+      'inventory_movements',
+      'inventory_reservations',
+      'manufacturing_orders',
+      'manufacturing_order_dimensions',
+      'manufacturing_order_materials',
+      'manufacturing_checklist',
+      'material_shortages',
+      'sync_queue',
+    ];
+    await db.transaction((txn) async {
+      for (final table in tables) {
+        await txn.delete(table);
+      }
+    });
+  }
 }

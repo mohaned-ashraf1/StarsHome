@@ -1,4 +1,6 @@
-import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -48,6 +50,27 @@ class CustomerReceiptHelper {
     final totalPaid = order.calculateTotalPaid(payments);
     final remainingBalance = order.calculateRemainingBalance(payments);
     final isSettled = remainingBalance <= 0 && order.totalAmount > 0;
+
+    // Pre-load section images for PDF rendering
+    final sectionImages = <String, pw.MemoryImage>{};
+    for (final s in order.sections) {
+      if (s.imageBase64 != null && s.imageBase64!.trim().isNotEmpty) {
+        try {
+          final cleanBase64 = s.imageBase64!.contains(',')
+              ? s.imageBase64!.split(',').last
+              : s.imageBase64!;
+          final bytes = base64Decode(cleanBase64.trim());
+          sectionImages[s.id] = pw.MemoryImage(bytes);
+        } catch (_) {}
+      } else if (s.imagePath != null && s.imagePath!.trim().isNotEmpty && !kIsWeb) {
+        try {
+          final file = File(s.imagePath!.trim());
+          if (file.existsSync()) {
+            sectionImages[s.id] = pw.MemoryImage(file.readAsBytesSync());
+          }
+        } catch (_) {}
+      }
+    }
 
     doc.addPage(
       pw.Page(
@@ -228,7 +251,7 @@ class CustomerReceiptHelper {
 
               pw.SizedBox(height: 12),
 
-              // 3. Order Details Box
+              // 3. Order Details & Sections Box
               pw.Container(
                 padding: const pw.EdgeInsets.all(10),
                 decoration: pw.BoxDecoration(
@@ -239,30 +262,113 @@ class CustomerReceiptHelper {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(
-                      'بيانات وتفاصيل الطلب المطلوب:',
-                      style: pw.TextStyle(
-                        font: fontBold,
-                        fontSize: 11,
-                        color: PdfColors.blueGrey800,
-                      ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          order.sections.isNotEmpty
+                              ? 'أقسام وموديلات الطلب المتفق عليها:'
+                              : 'بيانات وتفاصيل الطلب المطلوب:',
+                          style: pw.TextStyle(
+                            font: fontBold,
+                            fontSize: 11,
+                            color: PdfColors.blueGrey800,
+                          ),
+                        ),
+                        if (order.sections.isNotEmpty)
+                          pw.Text(
+                            'عدد الأقسام: ${order.sections.length}',
+                            style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey600),
+                          ),
+                      ],
                     ),
-                    pw.SizedBox(height: 4),
-                    pw.Text(
-                      order.orderDescription,
-                      style: pw.TextStyle(
-                        font: fontRegular,
-                        fontSize: 11,
-                        lineSpacing: 1.4,
+                    pw.SizedBox(height: 6),
+                    if (order.sections.isEmpty) ...[
+                      pw.Text(
+                        order.orderDescription,
+                        style: pw.TextStyle(
+                          font: fontRegular,
+                          fontSize: 10.5,
+                          lineSpacing: 1.4,
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      ...order.sections.map((sec) {
+                        final img = sectionImages[sec.id];
+                        return pw.Container(
+                          margin: const pw.EdgeInsets.only(bottom: 6),
+                          padding: const pw.EdgeInsets.all(6),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.white,
+                            border: pw.Border.all(color: PdfColors.grey300, width: 0.7),
+                            borderRadius: pw.BorderRadius.circular(5),
+                          ),
+                          child: pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Expanded(
+                                child: pw.Column(
+                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Row(
+                                      children: [
+                                        pw.Container(
+                                          padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                          decoration: pw.BoxDecoration(
+                                            color: PdfColors.amber100,
+                                            borderRadius: pw.BorderRadius.circular(3),
+                                          ),
+                                          child: pw.Text(
+                                            sec.sectionType,
+                                            style: pw.TextStyle(font: fontBold, fontSize: 8.5, color: PdfColors.amber900),
+                                          ),
+                                        ),
+                                        pw.SizedBox(width: 5),
+                                        pw.Expanded(
+                                          child: pw.Text(
+                                            sec.title,
+                                            style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.blueGrey900),
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    pw.SizedBox(height: 3),
+                                    pw.Text(
+                                      sec.description,
+                                      style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey800, lineSpacing: 1.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (img != null) ...[
+                                pw.SizedBox(width: 8),
+                                pw.Container(
+                                  width: 75,
+                                  height: 60,
+                                  decoration: pw.BoxDecoration(
+                                    borderRadius: pw.BorderRadius.circular(4),
+                                    border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+                                  ),
+                                  child: pw.ClipRRect(
+                                    horizontalRadius: 4,
+                                    verticalRadius: 4,
+                                    child: pw.Image(img, fit: pw.BoxFit.cover),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
                     if (order.notes != null && order.notes!.isNotEmpty) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         'ملاحظات إضافية: ${order.notes!}',
                         style: pw.TextStyle(
                           font: fontRegular,
-                          fontSize: 9,
+                          fontSize: 8.5,
                           color: PdfColors.grey700,
                         ),
                       ),
@@ -506,6 +612,131 @@ class CustomerReceiptHelper {
         },
       ),
     );
+
+    // If any section has an image, append a dedicated Design Photos Appendix Page!
+    final sectionsWithImages = order.sections.where((s) => sectionImages.containsKey(s.id)).toList();
+    if (sectionsWithImages.isNotEmpty) {
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          textDirection: pw.TextDirection.rtl,
+          theme: pw.ThemeData.withFont(
+            base: fontRegular,
+            bold: fontBold,
+          ),
+          build: (pw.Context ctx) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: pw.BorderRadius.circular(6),
+                    border: pw.Border.all(color: PdfColors.grey300),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'ملحق صور وموديلات التصميم المعتمدة للطلب',
+                        style: pw.TextStyle(font: fontBold, fontSize: 13, color: PdfColors.blueGrey900),
+                      ),
+                      pw.Text(
+                        'طلب: #${order.id.substring(0, 8).toUpperCase()} - ${order.customerName}',
+                        style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.grey700),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 14),
+
+                // Large photos with descriptions
+                pw.Expanded(
+                  child: pw.ListView(
+                    children: [
+                      ...sectionsWithImages.map((sec) {
+                        final img = sectionImages[sec.id]!;
+                        return pw.Container(
+                          margin: const pw.EdgeInsets.only(bottom: 12),
+                          padding: const pw.EdgeInsets.all(10),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.grey50,
+                            borderRadius: pw.BorderRadius.circular(8),
+                            border: pw.Border.all(color: PdfColors.grey300),
+                          ),
+                          child: pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              // Large Photo
+                              pw.Container(
+                                width: 180,
+                                height: 130,
+                                decoration: pw.BoxDecoration(
+                                  borderRadius: pw.BorderRadius.circular(6),
+                                  border: pw.Border.all(color: PdfColors.grey400, width: 0.8),
+                                ),
+                                child: pw.ClipRRect(
+                                  horizontalRadius: 6,
+                                  verticalRadius: 6,
+                                  child: pw.Image(img, fit: pw.BoxFit.cover),
+                                ),
+                              ),
+                              pw.SizedBox(width: 14),
+                              // Specs
+                              pw.Expanded(
+                                child: pw.Column(
+                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Container(
+                                      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: pw.BoxDecoration(
+                                        color: PdfColors.amber100,
+                                        borderRadius: pw.BorderRadius.circular(4),
+                                        border: pw.Border.all(color: PdfColors.amber700, width: 0.5),
+                                      ),
+                                      child: pw.Text(
+                                        sec.sectionType,
+                                        style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.amber900),
+                                      ),
+                                    ),
+                                    pw.SizedBox(height: 6),
+                                    pw.Text(
+                                      sec.title,
+                                      style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey900),
+                                    ),
+                                    pw.SizedBox(height: 6),
+                                    pw.Text(
+                                      sec.description,
+                                      style: pw.TextStyle(font: fontRegular, fontSize: 10, color: PdfColors.grey800, lineSpacing: 1.4),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('مصنع ستارز هومز للأثاث والمصنوعات الخشبية', style: pw.TextStyle(font: fontRegular, fontSize: 8.5, color: PdfColors.grey600)),
+                    pw.Text('صفحة ملحق الصور', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
 
     return doc;
   }

@@ -90,6 +90,7 @@ class CustomersScreen extends StatelessWidget {
                 required double totalAmount,
                 required String status,
                 String? notes,
+                List<OrderSectionItem>? sections,
                 double? initialPayment,
                 String paymentMethod = 'نقدي',
                 String? paymentNotes,
@@ -104,6 +105,7 @@ class CustomersScreen extends StatelessWidget {
                   totalAmount: totalAmount,
                   status: status,
                   notes: notes,
+                  sections: sections,
                   createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                 );
 
@@ -421,45 +423,73 @@ class CustomersScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Top Row: Customer Name, Phone & Status
+            // Row 1: Customer Name + Role Badge (Right) & Status Badge (Left)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              order.customerName,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textWhite,
-                              ),
-                            ),
+                      Flexible(
+                        child: Text(
+                          order.customerName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textWhite,
                           ),
-                          const SizedBox(width: 6),
-                          UserRoleBadge(createdBy: order.createdBy, compact: true),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(Icons.phone, size: 12, color: AppColors.textMuted),
-                          const SizedBox(width: 4),
-                          Text(
-                            order.phone?.isNotEmpty == true ? order.phone! : 'بدون رقم',
-                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '•  بدء: ${DateHelper.formatDisplay(order.startDate)}',
-                            style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      UserRoleBadge(createdBy: order.createdBy, compact: true),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: order.statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: order.statusColor.withOpacity(0.5)),
+                  ),
+                  child: Text(
+                    order.statusArabicName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: order.statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 2: Phone number & Start date (Right) + Action buttons (Left)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.phone, size: 13, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          order.phone?.isNotEmpty == true ? order.phone! : 'بدون رقم',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '•  بدء: ${DateHelper.formatDisplay(order.startDate)}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -467,28 +497,11 @@ class CustomersScreen extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: order.statusColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: order.statusColor.withOpacity(0.5)),
-                      ),
-                      child: Text(
-                        order.statusArabicName,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: order.statusColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
                     if (order.phone != null && order.phone!.trim().isNotEmpty) ...[
                       IconButton(
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 18),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 19),
                         tooltip: 'مراسلة العميل ومشاركة الفاتورة عبر واتساب',
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.all(4),
                         constraints: const BoxConstraints(),
                         onPressed: () {
                           WhatsAppService.sendOrderViaWhatsApp(
@@ -498,12 +511,12 @@ class CustomersScreen extends StatelessWidget {
                           );
                         },
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                     ],
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.infoBlue, size: 18),
+                      icon: const Icon(Icons.edit_outlined, color: AppColors.infoBlue, size: 19),
                       tooltip: 'تعديل الطلب والعميل',
-                      padding: EdgeInsets.zero,
+                      padding: const EdgeInsets.all(4),
                       constraints: const BoxConstraints(),
                       onPressed: () {
                         showDialog(
@@ -519,6 +532,7 @@ class CustomersScreen extends StatelessWidget {
                               required double totalAmount,
                               required String status,
                               String? notes,
+                              List<OrderSectionItem>? sections,
                               double? initialPayment,
                               String? paymentMethod,
                               String? paymentNotes,
@@ -533,6 +547,7 @@ class CustomersScreen extends StatelessWidget {
                                 totalAmount: totalAmount,
                                 status: status,
                                 notes: notes,
+                                sections: sections,
                               );
                               provider.updateOrder(updated);
                             },
@@ -540,11 +555,11 @@ class CustomersScreen extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: AppColors.expenseRed, size: 18),
+                      icon: const Icon(Icons.delete_outline, color: AppColors.expenseRed, size: 19),
                       tooltip: 'حذف الطلبية (سلة)',
-                      padding: EdgeInsets.zero,
+                      padding: const EdgeInsets.all(4),
                       constraints: const BoxConstraints(),
                       onPressed: () {
                         _confirmDeleteOrder(context, order, provider, accountsProvider);
@@ -829,6 +844,7 @@ class CustomersScreen extends StatelessWidget {
                       required double totalAmount,
                       required String status,
                       String? notes,
+                      List<OrderSectionItem>? sections,
                       double? initialPayment,
                       String paymentMethod = 'نقدي',
                       String? paymentNotes,
@@ -843,6 +859,7 @@ class CustomersScreen extends StatelessWidget {
                         totalAmount: totalAmount,
                         status: status,
                         notes: notes,
+                        sections: sections,
                         createdBy: auth.currentUser?.signature ?? (auth.isOwner ? 'المالك' : 'المدير'),
                       );
                       provider.addOrder(
@@ -890,9 +907,10 @@ class CustomersScreen extends StatelessWidget {
             onPressed: () async {
               Navigator.pop(ctx);
               await provider.deleteOrder(order.id, accountsProvider: accountsProvider);
+              await SyncService.instance.syncNow();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حذف الطلبية بنجاح')),
+                  const SnackBar(content: Text('تم حذف الطلبية ومزامنة الحذف سحابياً بنجاح')),
                 );
               }
             },
