@@ -24,6 +24,8 @@ import 'package:stars_home/frontend/views/dashboard/dashboard_screen.dart';
 import 'package:stars_home/frontend/views/settings/settings_screen.dart';
 import 'package:stars_home/frontend/views/sync/sync_status_screen.dart';
 import 'package:stars_home/frontend/views/auth/login_screen.dart';
+import 'package:stars_home/backend/services/update_service.dart';
+import 'package:stars_home/frontend/views/settings/update_center_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,7 +49,75 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       SyncService.instance.syncNow().then((_) {
         if (mounted) SyncService.reloadAllProviders(context);
       }).ignore();
+      // Proactive background update check
+      _checkUpdateOnStartup();
     });
+  }
+
+  Future<void> _checkUpdateOnStartup() async {
+    try {
+      final info = await UpdateService.instance.checkForUpdates();
+      if (info.hasUpdate && mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceDark,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppColors.accentGold, width: 1.5),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.system_update_rounded, color: AppColors.accentGold, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'تحديث جديد متاح',
+                  style: TextStyle(
+                    color: AppColors.textWhite,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'يتوفر إصدار جديد من النظام (v${info.latestVersion}).\nهل ترغب في فتح مركز التحديثات للترقية الآن؟',
+              style: const TextStyle(
+                color: AppColors.textWhite,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('لاحقاً', style: TextStyle(color: AppColors.textMuted)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UpdateCenterScreen()),
+                  );
+                },
+                icon: const Icon(Icons.download_rounded, size: 18, color: AppColors.backgroundDark),
+                label: const Text(
+                  'تحديث الآن',
+                  style: TextStyle(color: AppColors.backgroundDark, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentGold,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (_) {
+      // Silent error: do not interrupt user if offline or network drops
+    }
   }
 
   void _onSyncDataUpdated() {
