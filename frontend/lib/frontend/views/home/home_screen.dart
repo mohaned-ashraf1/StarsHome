@@ -383,32 +383,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         );
                       },
                     ),
-                    const SizedBox(height: 26),
-
-                    // Bottom Factory Footer
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            'STARS HOMES • نظام الإدارة المالية المحمي',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted.withOpacity(0.7),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'قاعدة بيانات موحدة مشتركة • مزامنة فورية وآمنة',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.accentGold.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),

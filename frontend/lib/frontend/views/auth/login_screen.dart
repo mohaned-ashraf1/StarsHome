@@ -195,16 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    AppStrings.appSubtitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textWhite,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   Text(
                     _isSetupMode ? 'إعداد رمز الدخول الأولي' : AppStrings.systemTitle,
                     textAlign: TextAlign.center,
