@@ -86,4 +86,6 @@ COMMENT ON TABLE public.manufacturing_checklist IS 'قائمة مراحل الج
 COMMENT ON TABLE public.profiles IS 'ملفات مستخدمي النظام وتحديد دور المالك أو المدير وصلاحيات الوصول';
 COMMENT ON COLUMN public.profiles.role IS 'دور المستخدم: owner (مالك المصنع)، manager (مدير المصنع)';
 COMMENT ON TABLE public.audit_logs IS 'سجل العمليات والرقابة لتتبع أي إدخال أو تعديل في النظام';
+COMMENT ON TABLE public.backup_records IS 'سجلات النسخ الاحتياطي السحابي والمحلي مع البصمات المشفرة وحالة الاستعادة';
+COMMENT ON TABLE public.sync_queue IS 'طابور المزامنة دون اتصال للعمليات المعلقة المطلوب مزامنتها مع السحابة';
 

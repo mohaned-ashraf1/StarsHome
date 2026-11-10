@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stars_home/frontend/constants/app_colors.dart';
+import 'package:stars_home/backend/constants/database_dictionary.dart';
 import 'package:stars_home/backend/services/db_service.dart';
 import 'package:stars_home/backend/services/sync_service.dart';
 
@@ -341,6 +342,11 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                       color: AppColors.textWhite,
                       fontWeight: FontWeight.bold,
                       fontSize: 13)),
+              const SizedBox(width: 4),
+              Text('($table)',
+                  style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11)),
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -448,25 +454,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
   }
 
   String _tableLabel(String t) {
-    const labels = {
-      'purchases': 'مشتريات',
-      'incomes': 'إيرادات',
-      'workers': 'عمال',
-      'worker_attendance': 'حضور',
-      'worker_financial_items': 'بنود مالية',
-      'worker_payroll_settlements': 'تسويات رواتب',
-      'contractors': 'مقاولون',
-      'contractor_payments': 'دفعات مقاولين',
-      'debts_advances': 'ديون وسلف',
-      'debt_advance_payments': 'سداد ديون',
-      'customer_orders': 'طلبات عملاء',
-      'order_payments': 'دفعات طلبات',
-      'inventory_items': 'مخزون',
-      'inventory_movements': 'حركة مخزون',
-      'manufacturing_orders': 'أوامر تصنيع',
-      'material_shortages': 'نقص مواد',
-    };
-    return labels[t] ?? t;
+    return DatabaseDictionary.getTableLabel(t);
   }
 
   String _opLabel(String op) {

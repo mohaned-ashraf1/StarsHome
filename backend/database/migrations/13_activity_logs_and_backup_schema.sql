@@ -70,3 +70,4 @@ COMMENT ON COLUMN public.audit_logs.action IS 'نوع الإجراء (تسجيل
 COMMENT ON COLUMN public.audit_logs.module IS 'القسم التابع له الإجراء (العملاء، العمال، الحسابات، النسخ الاحتياطي)';
 
 COMMENT ON TABLE public.backup_records IS 'سجل عمليات النسخ الاحتياطي السحابية والمحلية وبيانات التحقق الرقمي SHA-256';
+

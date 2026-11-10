@@ -16,6 +16,7 @@ import 'package:stars_home/frontend/views/sync/sync_status_screen.dart';
 import 'update_center_screen.dart';
 import 'backup_restore_screen.dart';
 import 'activity_log_screen.dart';
+import 'database_dictionary_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -365,6 +366,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const ActivityLogScreen()),
+                  ),
+                ),
+                const Divider(color: AppColors.backgroundDark, height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purpleAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.menu_book_rounded,
+                        color: Colors.purpleAccent, size: 22),
+                  ),
+                  title: const Text('قاموس ودليل قاعدة البيانات (Supabase Dictionary)',
+                      style: TextStyle(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  subtitle: const Text(
+                      'شرح وتوثيق معرب لجميع جداول وأعمدة وأنواع وعلاقات قاعدة البيانات',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_left, color: AppColors.textMuted),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const DatabaseDictionaryScreen()),
                   ),
                 ),
               ],
