@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define MyAppName "STARS HOMES ERP"
-#define MyAppVersion "1.0.12"
+#define MyAppVersion "1.0.13"
 #define MyAppPublisher "STARS HOMES Factory"
 #define MyAppURL "https://github.com/mohaned-ashraf1/StarsHome"
 #define MyAppExeName "stars_home.exe"
