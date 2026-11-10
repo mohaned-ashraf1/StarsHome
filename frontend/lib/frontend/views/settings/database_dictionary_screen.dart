@@ -469,3 +469,4 @@ class _DatabaseDictionaryScreenState extends State<DatabaseDictionaryScreen> {
     );
   }
 }
+
