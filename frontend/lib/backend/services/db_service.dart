@@ -21,7 +21,8 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 ///  v7 — add supplier_name, minimum_limit alias (min_stock_level renamed), updated_at
 ///         to inventory_items; category column in material_shortages
 ///  v8 — ensure device_id column exists on all SQLite tables for Supabase parity
-const int _kDbVersion = 8;
+///  v9 — add audit_logs and backup_records tables for activity tracking & backups
+const int _kDbVersion = 9;
 
 class DBService {
   static final DBService instance = DBService._internal();
@@ -94,6 +95,7 @@ class DBService {
     await _applyV6Columns(db);
     await _applyV7Columns(db);
     await _applyV8Columns(db);
+    await _createV9Tables(db);
     await _seedDefaults(db);
   }
 
@@ -112,6 +114,7 @@ class DBService {
     if (oldVersion < 6) await _applyV6Columns(db);
     if (oldVersion < 7) await _applyV7Columns(db);
     if (oldVersion < 8) await _applyV8Columns(db);
+    if (oldVersion < 9) await _createV9Tables(db);
   }
 
   // ──────────────────────────────────────────────────
@@ -555,6 +558,49 @@ class DBService {
     for (final table in tables) {
       await _safeAlter(db, 'ALTER TABLE $table ADD COLUMN device_id TEXT');
     }
+  }
+
+  Future<void> _createV9Tables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_name TEXT NOT NULL,
+        user_role TEXT DEFAULT 'manager',
+        device_id TEXT,
+        action TEXT NOT NULL,
+        module TEXT NOT NULL,
+        entity_table TEXT,
+        entity_id TEXT,
+        details TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS backup_records (
+        id TEXT PRIMARY KEY,
+        filename TEXT NOT NULL,
+        backup_type TEXT NOT NULL,
+        storage_destination TEXT NOT NULL DEFAULT 'local',
+        file_size INTEGER DEFAULT 0,
+        sha256_hash TEXT,
+        device_id TEXT,
+        created_by TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'completed',
+        details TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON audit_logs (module)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_backup_records_created ON backup_records (created_at DESC)',
+    );
   }
 
   /// Executes an ALTER TABLE statement, silently ignoring "duplicate column" errors.

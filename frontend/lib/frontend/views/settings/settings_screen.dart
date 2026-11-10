@@ -13,6 +13,9 @@ import 'package:stars_home/backend/providers/accounts_provider.dart';
 import 'package:stars_home/backend/providers/auth_provider.dart';
 import 'package:stars_home/frontend/views/auth/device_authorization_screen.dart';
 import 'package:stars_home/frontend/views/sync/sync_status_screen.dart';
+import 'update_center_screen.dart';
+import 'backup_restore_screen.dart';
+import 'activity_log_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -279,6 +282,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'حالة المزامنة', Icons.cloud_sync_outlined),
             const SizedBox(height: 10),
             _buildSyncStatusCard(),
+            const SizedBox(height: 24),
+
+            // ── System Management (Updates, Backups, Logs) ─────────────
+            _buildSectionHeader(
+                'أدوات النظام والإدارة', Icons.admin_panel_settings_outlined),
+            const SizedBox(height: 10),
+            _buildCard(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.system_update_alt_rounded,
+                        color: AppColors.accentGold, size: 22),
+                  ),
+                  title: const Text('مركز التحديثات والتطوير',
+                      style: TextStyle(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  subtitle: const Text(
+                      'فحص وتنزيل أحدث إصدارات التطبيق لويندوز 11 وأندرويد',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_left, color: AppColors.textMuted),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UpdateCenterScreen()),
+                  ),
+                ),
+                const Divider(color: AppColors.backgroundDark, height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.incomeGreen.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.settings_backup_restore_rounded,
+                        color: AppColors.incomeGreen, size: 22),
+                  ),
+                  title: const Text('النسخ الاحتياطي والاسترجاع',
+                      style: TextStyle(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  subtitle: const Text(
+                      'نسخ محلي وسحابي على Google Drive واسترجاع آمن',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_left, color: AppColors.textMuted),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BackupRestoreScreen()),
+                  ),
+                ),
+                const Divider(color: AppColors.backgroundDark, height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.history_edu_rounded,
+                        color: Colors.blueAccent, size: 22),
+                  ),
+                  title: const Text('سجل العمليات والرقابة (Audit Log)',
+                      style: TextStyle(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13)),
+                  subtitle: const Text(
+                      'تتبع من قام بكل عملية، نوعها، وقتها، والجهاز',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  trailing: const Icon(Icons.chevron_left, color: AppColors.textMuted),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ActivityLogScreen()),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
 
             // ── Supabase Connection ─────────────────────────────────────
