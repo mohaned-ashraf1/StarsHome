@@ -56,9 +56,11 @@ class _AddDebtAdvanceDialogState extends State<AddDebtAdvanceDialog> {
     return Dialog(
       backgroundColor: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 520,
-        padding: const EdgeInsets.all(22),
+        constraints: const BoxConstraints(maxWidth: 520),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,

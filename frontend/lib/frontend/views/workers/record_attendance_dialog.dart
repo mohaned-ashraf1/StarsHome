@@ -142,9 +142,11 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
     return Dialog(
       backgroundColor: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 500,
-        padding: const EdgeInsets.all(22),
+        constraints: const BoxConstraints(maxWidth: 500),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -300,26 +302,29 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.infoBlue.withOpacity(0.4)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'الانصراف الرسمي للعامل: ${DateHelper.formatTimeStringTo12Hour(selectedWorker.standardEndTime)}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            Expanded(
+                              child: Text(
+                                'الانصراف الرسمي: ${DateHelper.formatTimeStringTo12Hour(selectedWorker.standardEndTime)}',
+                                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const SizedBox(height: 2),
                             Text(
-                              'ساعات الإضافي المحسوبة: $_previewOvertimeHours ساعة',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.infoBlue),
+                              'مستحق الإضافي: ${CurrencyFormatter.format(_previewOvertimePay)}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accentGold),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
                         Text(
-                          'مستحق الإضافي: ${CurrencyFormatter.format(_previewOvertimePay)}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.accentGold),
+                          'ساعات الإضافي المحسوبة: $_previewOvertimeHours ساعة',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.infoBlue),
                         ),
                       ],
                     ),
@@ -339,6 +344,10 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                         onPressed: () => Navigator.pop(context),
                         child: const Text('إلغاء'),
                       ),
@@ -346,7 +355,11 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentGold),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGold,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                         onPressed: () async {
                           if (_formKey.currentState!.validate() && _selectedWorkerId != null) {
                             await workers.recordAttendance(
@@ -367,7 +380,10 @@ class _RecordAttendanceDialogState extends State<RecordAttendanceDialog> {
                             }
                           }
                         },
-                        child: const Text('تأكيد وحفظ', style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'تأكيد وحفظ',
+                          style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
                     ),
                   ],

@@ -47,9 +47,11 @@ class _PayrollSettlementDialogState extends State<PayrollSettlementDialog> {
     return Dialog(
       backgroundColor: AppColors.surfaceDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 520,
-        padding: const EdgeInsets.all(22),
+        constraints: const BoxConstraints(maxWidth: 520),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -188,39 +190,21 @@ class _PayrollSettlementDialogState extends State<PayrollSettlementDialog> {
                 const SizedBox(height: 22),
 
                 // Actions
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('إلغاء'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.print_outlined, size: 15, color: AppColors.accentGold),
-                        label: const Text('إيصال العامل', style: TextStyle(color: AppColors.accentGold, fontSize: 11)),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.accentGold),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGold,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: () async {
-                          final range = DateHelper.getDateRangeForPeriod(workers.selectedWeekPeriod);
-                          await WorkerPayrollReceiptHelper.printSingleWorkerReceipt(
-                            context: context,
-                            summary: s,
-                            weekStart: range.start,
-                            weekEnd: range.end,
-                            attendanceList: workers.attendanceRecords,
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentGold),
+                        icon: const Icon(Icons.check_circle_outline, color: AppColors.primaryNavy, size: 20),
+                        label: const Text(
+                          'تأكيد الصرف',
+                          style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
                         onPressed: () async {
                           if (_formKey.currentState!.validate()) {
                             final amount = double.parse(_amountController.text);
@@ -244,8 +228,47 @@ class _PayrollSettlementDialogState extends State<PayrollSettlementDialog> {
                             }
                           }
                         },
-                        child: const Text('تأكيد الصرف', style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold)),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('إلغاء'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.print_outlined, size: 16, color: AppColors.accentGold),
+                            label: const Text(
+                              'إيصال العامل',
+                              style: TextStyle(color: AppColors.accentGold, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.accentGold),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () async {
+                              final range = DateHelper.getDateRangeForPeriod(workers.selectedWeekPeriod);
+                              await WorkerPayrollReceiptHelper.printSingleWorkerReceipt(
+                                context: context,
+                                summary: s,
+                                weekStart: range.start,
+                                weekEnd: range.end,
+                                attendanceList: workers.attendanceRecords,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

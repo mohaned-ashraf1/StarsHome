@@ -359,12 +359,20 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
                             ),
                             const SizedBox(height: 8),
                             if (att.status == 'present') ...[
-                              Row(
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 10,
+                                runSpacing: 6,
                                 children: [
-                                  Text('الحضور: ${DateHelper.formatTimeStringTo12Hour(att.arrivalTime)}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                                  const SizedBox(width: 14),
-                                  Text('الانصراف: ${DateHelper.formatTimeStringTo12Hour(att.departureTime)}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                                  const Spacer(),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text('الحضور: ${DateHelper.formatTimeStringTo12Hour(att.arrivalTime)}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                      const SizedBox(width: 12),
+                                      Text('الانصراف: ${DateHelper.formatTimeStringTo12Hour(att.departureTime)}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                    ],
+                                  ),
                                   if (att.overtimeHours > 0)
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -542,7 +550,7 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
           ),
         ),
 
-        // Grand Total Banner
+        // Grand Total Banner (Responsive 2x2 Grid)
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(14),
@@ -551,13 +559,47 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.accentGold.withOpacity(0.4)),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Column(
             children: [
-              _buildPayrollMetric('إجمالي المستحقات', CurrencyFormatter.format(grandTotals['gross'] ?? 0), AppColors.textWhite),
-              _buildPayrollMetric('إجمالي السلف والخصم', CurrencyFormatter.format((grandTotals['advances'] ?? 0) + (grandTotals['deductions'] ?? 0)), AppColors.warningAmber),
-              _buildPayrollMetric('المدفوع فعلياً', CurrencyFormatter.format(grandTotals['paid'] ?? 0), AppColors.incomeGreen),
-              _buildPayrollMetric('المتبقي للمصنع', CurrencyFormatter.format(grandTotals['remaining'] ?? 0), AppColors.expenseRed),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPayrollMetric(
+                      'إجمالي المستحقات',
+                      CurrencyFormatter.format(grandTotals['gross'] ?? 0),
+                      AppColors.textWhite,
+                    ),
+                  ),
+                  Container(width: 1, height: 36, color: AppColors.surfaceBorder),
+                  Expanded(
+                    child: _buildPayrollMetric(
+                      'إجمالي السلف والخصم',
+                      CurrencyFormatter.format((grandTotals['advances'] ?? 0) + (grandTotals['deductions'] ?? 0)),
+                      AppColors.warningAmber,
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(color: AppColors.surfaceBorder, height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildPayrollMetric(
+                      'المدفوع فعلياً',
+                      CurrencyFormatter.format(grandTotals['paid'] ?? 0),
+                      AppColors.incomeGreen,
+                    ),
+                  ),
+                  Container(width: 1, height: 36, color: AppColors.surfaceBorder),
+                  Expanded(
+                    child: _buildPayrollMetric(
+                      'المتبقي للمصنع',
+                      CurrencyFormatter.format(grandTotals['remaining'] ?? 0),
+                      AppColors.expenseRed,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -567,7 +609,7 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
           child: summaries.isEmpty
               ? _buildEmptyState('لا توجد بيانات حضور أو رواتب مسجلة لهذه الفترة.')
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                   itemCount: summaries.length,
                   itemBuilder: (context, index) {
                     final s = summaries[index];
@@ -619,66 +661,86 @@ class _WorkersScreenState extends State<WorkersScreen> with SingleTickerProvider
                               ],
                             ),
                             const Divider(color: AppColors.surfaceBorder, height: 16),
+                            // Amounts Row (Clean responsive separation)
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text('صافي المستحق الأسبوعي:', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                    const SizedBox(height: 2),
                                     Text(CurrencyFormatter.format(s.netAmountDue), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.accentGold)),
                                   ],
                                 ),
-                                const SizedBox(width: 24),
                                 Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     const Text('المتبقي للصرف:', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                    const SizedBox(height: 2),
                                     Text(CurrencyFormatter.format(s.remainingDue), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.expenseRed)),
                                   ],
                                 ),
-                                const Spacer(),
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: AppColors.accentGold),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Action Buttons Row (Equal 50% width each - never overflows)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: AppColors.accentGold),
+                                      padding: const EdgeInsets.symmetric(vertical: 9),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    icon: const Icon(Icons.print_outlined, size: 16, color: AppColors.accentGold),
+                                    label: const Text(
+                                      'إيصال العامل',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accentGold),
+                                    ),
+                                    onPressed: () async {
+                                      final range = DateHelper.getDateRangeForPeriod(workers.selectedWeekPeriod);
+                                      await WorkerPayrollReceiptHelper.printSingleWorkerReceipt(
+                                        context: context,
+                                        summary: s,
+                                        weekStart: range.start,
+                                        weekEnd: range.end,
+                                        attendanceList: workers.attendanceRecords,
+                                      );
+                                    },
                                   ),
-                                  icon: const Icon(Icons.print_outlined, size: 15, color: AppColors.accentGold),
-                                  label: const Text(
-                                    'إيصال العامل',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.accentGold),
-                                  ),
-                                  onPressed: () async {
-                                    final range = DateHelper.getDateRangeForPeriod(workers.selectedWeekPeriod);
-                                    await WorkerPayrollReceiptHelper.printSingleWorkerReceipt(
-                                      context: context,
-                                      summary: s,
-                                      weekStart: range.start,
-                                      weekEnd: range.end,
-                                      attendanceList: workers.attendanceRecords,
-                                    );
-                                  },
                                 ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: s.remainingDue > 0 ? AppColors.accentGold : AppColors.surfaceHover,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: s.remainingDue > 0 ? AppColors.accentGold : AppColors.surfaceHover,
+                                      padding: const EdgeInsets.symmetric(vertical: 9),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    icon: Icon(
+                                      Icons.payments_outlined,
+                                      size: 16,
+                                      color: s.remainingDue > 0 ? AppColors.primaryNavy : AppColors.textMuted,
+                                    ),
+                                    label: Text(
+                                      s.remainingDue > 0 ? 'صرف المستحقات' : 'تم الصرف',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: s.remainingDue > 0 ? AppColors.primaryNavy : AppColors.textMuted,
+                                      ),
+                                    ),
+                                    onPressed: s.remainingDue > 0
+                                        ? () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (_) => PayrollSettlementDialog(summary: s),
+                                            );
+                                          }
+                                        : null,
                                   ),
-                                  icon: const Icon(Icons.payments_outlined, size: 15, color: AppColors.primaryNavy),
-                                  label: Text(
-                                    s.remainingDue > 0 ? 'صرف المستحقات' : 'تم الصرف',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
-                                  ),
-                                  onPressed: s.remainingDue > 0
-                                      ? () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (_) => PayrollSettlementDialog(summary: s),
-                                          );
-                                        }
-                                      : null,
                                 ),
                               ],
                             ),

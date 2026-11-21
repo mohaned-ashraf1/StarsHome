@@ -142,10 +142,11 @@ class _AddEditShortageDialogState extends State<AddEditShortageDialog> {
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 550,
         constraints: BoxConstraints(
+          maxWidth: 550,
           maxHeight: MediaQuery.of(context).size.height * 0.88,
         ),
+        width: double.infinity,
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
